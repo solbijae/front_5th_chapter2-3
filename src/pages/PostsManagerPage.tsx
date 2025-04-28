@@ -25,6 +25,7 @@ import {
   TableRow,
   Textarea,
 } from "../shared/ui"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useQueryParams } from "../hooks/useQueryParams"
 
 interface Post {
@@ -87,6 +88,7 @@ interface UsersResponse {
 const PostsManager = () => {
   const location = useLocation(); 
   const queryParams = new URLSearchParams(location.search);
+  const queryClient = useQueryClient();
 
   // 상태 관리
   const [posts, setPosts] = useState<Post[]>([]);
@@ -100,7 +102,6 @@ const PostsManager = () => {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [newPost, setNewPost] = useState({ title: "", body: "", userId: 1 });
-  const [loading, setLoading] = useState(false);
   const [tags, setTags] = useState<{ url: string; slug: string }[]>([]);
   const [selectedTag, setSelectedTag] = useState(queryParams.get("tag") || "");
   const [comments, setComments] = useState<Record<number, Comment[]>>({});
@@ -115,7 +116,28 @@ const PostsManager = () => {
   const [showPostDetailDialog, setShowPostDetailDialog] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [, setError] = useState<string | null>(null);
   const { updateURL } = useQueryParams(skip, limit, searchQuery, sortBy, sortOrder, selectedTag);
+
+  // 매직 넘버
+  // 시간 단위 정의
+  const MILLISECONDS_IN_A_MINUTE = 1000 * 60;
+  // 캐시 설정 시간
+  const STALE_TIME = MILLISECONDS_IN_A_MINUTE * 5;
+  const GC_TIME = MILLISECONDS_IN_A_MINUTE * 30;
+
+  // 공통 에러 처리
+  const handleError = (error: Error) => {
+    setError(error.message);
+    console.error(error);
+  };
+
+  // 공통 캐시 무효화
+  const invalidateQueries = (queryKeys: string[]) => {
+    queryKeys.forEach(key => {
+      queryClient.invalidateQueries({ queryKey: [key] });
+    });
+  };
 
   // API: 게시물 데이터 가져오기
   const fetchPostsData = useCallback(async () => {
@@ -137,20 +159,24 @@ const PostsManager = () => {
     }))
   }
 
-  // 게시물 가져오기
-  const fetchPosts = useCallback(async (): Promise<void> => {
-    setLoading(true)
-    try {
-      const { postsData, usersData } = await fetchPostsData();
-      const postsWithUsers = mergePostsAndUsers(postsData.posts, usersData.users);
+  // 게시물 데이터 가져오기
+  const { data: postsData, isLoading: isPostsLoading } = useQuery<{ postsData: PostsResponse; usersData: UsersResponse }>({
+    queryKey: ["posts", skip, limit, searchQuery, sortBy, sortOrder, selectedTag],
+    queryFn: fetchPostsData,
+    staleTime: STALE_TIME,
+    gcTime: GC_TIME,
+    retry: 3,
+    refetchOnWindowFocus: false,
+  });
+
+  // 게시물 데이터 업데이트
+  useEffect(() => {
+    if (postsData) {
+      const postsWithUsers = mergePostsAndUsers(postsData.postsData.posts, postsData.usersData.users);
       setPosts(postsWithUsers);
-      setTotal(postsData.total);
-    } catch (error) {
-      console.error("게시물 가져오기 오류:", error);
-    } finally {
-      setLoading(false);
+      setTotal(postsData.postsData.total);    
     }
-  }, [fetchPostsData]);
+  }, [postsData]);
 
   // API: 태그 데이터 가져오기
   const fetchTagsData = async () => {
@@ -161,20 +187,24 @@ const PostsManager = () => {
     return await response.json();
   };
 
-  // 태그 가져오기
-  const fetchTags = useCallback(async () => {
-    try {
-      const tagsData = await fetchTagsData();
-      setTags(tagsData);
-    } catch (error) {
-      console.error("태그 가져오기 오류:", error);
-    }
-  }, []);
+  // 태그 데이터 가져오기
+  const { data: tagsData, isLoading: isTagsLoading } = useQuery<{ url: string; slug: string }[]>({
+    queryKey: ["tags"],
+    queryFn: fetchTagsData,
+    staleTime: STALE_TIME,
+    gcTime: GC_TIME,
+    retry: 2,
+    refetchOnWindowFocus: false,
+  });
 
+  // 태그 데이터 업데이트
   useEffect(() => {
-    fetchTags();
-  }, [fetchTags]);
+    if (tagsData) {
+      setTags(tagsData);
+    }
+  }, [tagsData]);
 
+  // API: 검색 결과 가져오기
   const fetchSearchPostsData = async () => {
     const response = await fetch(`/api/posts/search?q=${searchQuery}`);
     if (!response.ok) {
@@ -183,23 +213,26 @@ const PostsManager = () => {
     return await response.json();
   };
 
-  // 게시물 검색
-  const searchPosts = async () => {
-    if (!searchQuery) {
-      fetchPosts();
-      return;
+  // 검색 결과 가져오기
+  const { data: searchData, isLoading: isSearchLoading } = useQuery<{ posts: Post[]; total: number }>({
+    queryKey: ['posts', 'search', searchQuery],
+    queryFn: fetchSearchPostsData,
+    enabled: !!searchQuery,
+    staleTime: STALE_TIME,
+    gcTime: GC_TIME,
+    retry: 2,
+    refetchOnWindowFocus: false,
+  });
+  
+  // 검색 결과가 있으면 게시물 데이터 업데이트
+  useEffect(() => {
+    if (searchData) {
+      setPosts(searchData.posts);
+      setTotal(searchData.total);
     }
-    setLoading(true);
-    try {
-      const data = await fetchSearchPostsData();
-      setPosts(data.posts);
-      setTotal(data.total);
-    } catch (error) {
-      console.error("게시물 검색 오류:", error);
-    }
-    setLoading(false);
-  }
+  }, [searchData]);
 
+  // API: 태그별 게시물 가져오기
   const fetchPostsByTagData = async (tag: string) => {
     const [postsResponse, usersResponse] = await Promise.all([
       fetch(`/api/posts/tag/${tag}`),
@@ -216,23 +249,26 @@ const PostsManager = () => {
   }
 
   // 태그별 게시물 가져오기
-  const fetchPostsByTag = useCallback(async (tag: string) => {
-    if (!tag || tag === "all") {
-      fetchPosts();
-      return;
-    }
-    setLoading(true);
-    try {
-      const { postsData, usersData } = await fetchPostsByTagData(tag);
-      const postsWithUsers = mergePostsAndUsers(postsData.posts, usersData.users);
+  const { data: tagData, isLoading: isTagLoading } = useQuery<{ postsData: PostsResponse; usersData: UsersResponse }>({
+    queryKey: ['posts', 'tag', selectedTag],
+    queryFn: () => fetchPostsByTagData(selectedTag),
+    enabled: !!selectedTag && selectedTag !== "all",
+    staleTime: STALE_TIME,
+    gcTime: GC_TIME,
+    retry: 2,
+    refetchOnWindowFocus: false,
+  });
+  
+  // 데이터가 있으면 상태 업데이트
+  useEffect(() => {
+    if (tagData) {
+      const postsWithUsers = mergePostsAndUsers(tagData.postsData.posts, tagData.usersData.users);
       setPosts(postsWithUsers);
-      setTotal(postsData.total);
-    } catch (error) {
-      console.error("태그별 게시물 가져오기 오류:", error);
+      setTotal(tagData.postsData.total);
     }
-    setLoading(false);
-  }, [fetchPosts]);
+  }, [tagData]);
 
+  // API: 게시물 추가
   const fetchAddPostData = async () => {
     const response = await fetch("/api/posts/add", {
       method: "POST",
@@ -248,17 +284,18 @@ const PostsManager = () => {
   }
 
   // 게시물 추가
-  const addPost = async () => {
-    try {
-      const data = await fetchAddPostData();
+  const addPostMutation = useMutation<Post>({
+    mutationFn: fetchAddPostData,
+    onSuccess: (data) => {
       setPosts([data, ...posts]);
       setShowAddDialog(false);
       setNewPost({ title: "", body: "", userId: 1 });
-    } catch (error) {
-      console.error("게시물 추가 오류:", error);
-    }
-  }
+      invalidateQueries(['posts']);
+    },
+    onError: handleError
+  });
 
+  // API: 게시물 업데이트
   const fetchUpdatePostData = async () => {
     const response = await fetch(`/api/posts/${selectedPost?.id}`, {
       method: "PUT",
@@ -274,16 +311,17 @@ const PostsManager = () => {
   }
 
   // 게시물 업데이트
-  const updatePost = async () => {
-    try {
-      const data = await fetchUpdatePostData();
+  const updatePostMutation = useMutation<Post>({
+    mutationFn: fetchUpdatePostData,
+    onSuccess: (data) => {
       setPosts(posts.map((post) => (post.id === data.id ? data : post)));
       setShowEditDialog(false);
-    } catch (error) {
-      console.error("게시물 업데이트 오류:", error);
-    }
-  }
+      invalidateQueries(['posts']);
+    },
+    onError: handleError
+  });
 
+  // API: 게시물 삭제
   const fetchDeletePostData = async (id: number) => {
     const response = await fetch(`/api/posts/${id}`, {
       method: "DELETE",
@@ -297,15 +335,16 @@ const PostsManager = () => {
   }
 
   // 게시물 삭제
-  const deletePost = async (id: number) => {
-    try {
-      await fetchDeletePostData(id);
+  const deletePostMutation = useMutation<void, Error, number>({
+    mutationFn: fetchDeletePostData,
+    onSuccess: (_, id) => {
       setPosts(posts.filter((post) => post.id !== id));
-    } catch (error) {
-      console.error("게시물 삭제 오류:", error);
-    }
-  }
+      invalidateQueries(['posts']);
+    },
+    onError: handleError
+  });
 
+  // API: 댓글 가져오기
   const fetchCommentsData = async (postId: number) => {
     const response = await fetch(`/api/comments/post/${postId}`);
     if (!response.ok) {
@@ -314,17 +353,23 @@ const PostsManager = () => {
     return await response.json();
   }
 
-  // 댓글 가져오기
-  const fetchComments = async (postId: number): Promise<void> => {
-    if (comments[postId]) return;
-    try {
-      const data = await fetchCommentsData(postId);
-      setComments((prev) => ({ ...prev, [postId]: data.comments }));
-    } catch (error) {
-      console.error("댓글 가져오기 오류:", error);
-    }
-  };
+  const { data: commentsData, isLoading: isCommentsLoading } = useQuery<{ comments: Comment[] }>({
+    queryKey: ['comments', selectedPost?.id],
+    queryFn: () => fetchCommentsData(selectedPost?.id || 0),
+    enabled: !!selectedPost?.id,
+    staleTime: STALE_TIME,
+    gcTime: GC_TIME,
+    retry: 2,
+    refetchOnWindowFocus: false,
+  });
 
+  useEffect(() => {
+    if (commentsData && selectedPost?.id) {
+      setComments((prev) => ({ ...prev, [selectedPost.id]: commentsData.comments }));
+    }
+  }, [commentsData, selectedPost?.id]);
+
+  // API: 댓글 추가
   const fetchAddCommentData = async () => {
     const response = await fetch("/api/comments/add", {
       method: "POST",
@@ -340,20 +385,21 @@ const PostsManager = () => {
   }
 
   // 댓글 추가
-  const addComment = async (): Promise<void> => {
-    try {
-      const data = await fetchAddCommentData();
+  const addCommentMutation = useMutation<Comment>({
+    mutationFn: fetchAddCommentData,
+    onSuccess: (data) => {
       setComments((prev) => ({
         ...prev,
         [data.postId]: [...(prev[data.postId] || []), data],
-      }))
-      setShowAddCommentDialog(false)
-      setNewComment({ body: "", postId: null, userId: 1 })
-    } catch (error) {
-      console.error("댓글 추가 오류:", error);
-    }
-  }
+      }));
+      setShowAddCommentDialog(false);
+      setNewComment({ body: "", postId: null, userId: 1 });
+      invalidateQueries(['comments']);
+    },
+    onError: handleError
+  });
 
+  // API: 댓글 업데이트
   const fetchUpdateCommentData = async () => {
     const response = await fetch(`/api/comments/${selectedComment?.id}`, {
       method: "PUT",
@@ -369,19 +415,20 @@ const PostsManager = () => {
   }
 
   // 댓글 업데이트
-  const updateComment = async (): Promise<void> => {
-    try {
-      const data = await fetchUpdateCommentData();
+  const updateCommentMutation = useMutation<Comment>({
+    mutationFn: fetchUpdateCommentData,
+    onSuccess: (data) => {
       setComments((prev) => ({
         ...prev,
         [data.postId]: prev[data.postId].map((comment) => (comment.id === data.id ? data : comment)),
       }));
-      setShowEditCommentDialog(false)
-    } catch (error) {
-      console.error("댓글 업데이트 오류:", error);
-    }
-  }
+      setShowEditCommentDialog(false);
+      invalidateQueries(['comments']);
+    },
+    onError: handleError
+  });
 
+  // API: 댓글 삭제
   const fetchDeleteCommentData = async (id: number) => {
     const response = await fetch(`/api/comments/${id}`, {
       method: "DELETE",
@@ -395,18 +442,19 @@ const PostsManager = () => {
   }
 
   // 댓글 삭제
-  const deleteComment = async (id: number, postId: number): Promise<void> => {
-    try {
-      await fetchDeleteCommentData(id);
+  const deleteCommentMutation = useMutation<void, Error, { id: number; postId: number }>({
+    mutationFn: ({ id }) => fetchDeleteCommentData(id),
+    onSuccess: (_, variables) => {
       setComments((prev) => ({
         ...prev,
-        [postId]: prev[postId].filter((comment) => comment.id !== id),
-      }))
-    } catch (error) {
-      console.error("댓글 삭제 오류:", error);
-    }
-  }
+        [variables.postId]: prev[variables.postId].filter((comment) => comment.id !== variables.id),
+      }));
+      invalidateQueries(['comments']);
+    },
+    onError: handleError
+  });
 
+  // API: 댓글 좋아요
   const fetchLikeCommentData = async (id: number, postId: number) => {
     const response = await fetch(`/api/comments/${id}`, {
       method: "PATCH",
@@ -422,57 +470,64 @@ const PostsManager = () => {
   }
 
   // 댓글 좋아요
-  const likeComment = async (id: number, postId: number): Promise<void> => {
-    try {
-      const data = await fetchLikeCommentData(id, postId);
+  const likeCommentMutation = useMutation<Comment, Error, { id: number; postId: number }>({
+    mutationFn: ({ id, postId }) => fetchLikeCommentData(id, postId),
+    onSuccess: (data, { postId }) => {
       setComments((prev) => ({
         ...prev,
         [postId]: prev[postId].map((comment) =>
           comment.id === data.id ? { ...data, likes: comment.likes + 1 } : comment,
         ),
-      }))
-    } catch (error) {
-      console.error("댓글 좋아요 오류:", error);
-    }
-  }
+      }));
+      invalidateQueries(['comments']);
+    },
+    onError: handleError
+  });
 
   // 게시물 상세 보기
   const openPostDetail = (post: Post) => {
     setSelectedPost(post)
-    fetchComments(post.id)
     setShowPostDetailDialog(true)
   }
 
-  const fetchOpenUserModalData = async (user: User | undefined) => {
+  // API: 사용자 정보 가져오기
+  const fetchOpenUserModalData = async (user: User | null) => {
     const response = await fetch(`/api/users/${user?.id}`);
     if (!response.ok) {
       throw new Error("사용자 정보 가져오기 오류");
     }
-
     return await response.json();
   }
 
-  // 사용자 모달 열기
-  const openUserModal = async (user: User | undefined) => {
-    try {
-      const data = await fetchOpenUserModalData(user);
-      setSelectedUser(data);
-      setShowUserModal(true);
-    } catch (error) {
-      console.error("사용자 정보 가져오기 오류:", error);
-    }
-  }
+  // 사용자 정보 가져오기
+  const { data: userData, isLoading: isUserLoading } = useQuery<User>({
+    queryKey: ['user', selectedUser?.id],
+    queryFn: () => fetchOpenUserModalData(selectedUser),
+    enabled: !!selectedUser?.id,
+    staleTime: STALE_TIME,
+    gcTime: GC_TIME,
+    retry: 2,
+    refetchOnWindowFocus: false,
+  });
 
   useEffect(() => {
-    if (selectedTag) {
-      fetchPostsByTag(selectedTag);
-    } else {
-      fetchPosts();
+    if (userData) {
+      setSelectedUser(userData);
+      setShowUserModal(true);
     }
-    updateURL();
-  }, [skip, limit, sortBy, sortOrder, selectedTag, fetchPosts, fetchPostsByTag, updateURL]);
+  }, [userData]);
 
-  // URLSearchParams 파싱 함수
+  // 사용자 모달 열기
+  const openUserModal = (user: User | undefined) => {
+    setSelectedUser(user || null);
+  }
+
+  // URL 업데이트
+  useEffect(() => {
+    updateURL();
+  }, [skip, limit, sortBy, sortOrder, selectedTag, updateURL]);
+
+  // 순수함수: URLSearchParams 파싱
   const parseQueryParams = (search: string) => {
     const params = new URLSearchParams(search);
     return {
@@ -485,6 +540,7 @@ const PostsManager = () => {
     };
   };
 
+  // URL 업데이트
   useEffect(() => {
     const {
       skip,
@@ -513,10 +569,15 @@ const PostsManager = () => {
 
   // UI: 하이라이트된 부분을 UI에 렌더링
   const renderHighlightedText = (parts: string[], highlight: string) => {
+    if (!parts) return null
+    if (!highlight.trim()) {
+      return <span>{parts}</span>
+    }
+
     const regex = new RegExp(`(${highlight})`, "gi");
   
     return parts.map((part, index) =>
-      regex.test(part) ? <span key={index} className="bg-yellow-200">{part}</span> : <span key={index}>{part}</span>
+      regex.test(part) ? <mark key={index}>{part}</mark> : <span key={index}>{part}</span>
     );
   };
 
@@ -658,6 +719,44 @@ const PostsManager = () => {
     )
   }
 
+  // 게시물 추가
+  const addPost = () => {
+    addPostMutation.mutate();
+  };
+
+  // 게시물 업데이트
+  const updatePost = () => {
+    updatePostMutation.mutate();
+  };
+
+  // 게시물 삭제
+  const deletePost = (id: number) => {
+    deletePostMutation.mutate(id);
+  };
+
+  // 댓글 추가
+  const addComment = () => {
+    addCommentMutation.mutate();
+  };
+
+  // 댓글 업데이트
+  const updateComment = () => {
+    updateCommentMutation.mutate();
+  };
+
+  // 댓글 삭제
+  const deleteComment = (id: number, postId: number) => {
+    deleteCommentMutation.mutate({ id, postId });
+  };
+
+  // 댓글 좋아요
+  const likeComment = (id: number, postId: number) => {
+    likeCommentMutation.mutate({ id, postId });
+  };
+
+  // 로딩 상태 통합
+  const isLoading = isPostsLoading || isTagsLoading || isCommentsLoading || isUserLoading || isSearchLoading || isTagLoading;
+
   return (
     <Card className="w-full max-w-6xl mx-auto">
       <CardHeader>
@@ -681,7 +780,7 @@ const PostsManager = () => {
                   className="pl-8"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyPress={(e) => e.key === "Enter" && searchPosts()}
+                  onKeyPress={(e) => e.key === "Enter" && setSearchQuery(e.currentTarget.value)}
                 />
               </div>
             </div>
@@ -689,7 +788,6 @@ const PostsManager = () => {
               value={selectedTag}
               onValueChange={(value) => {
                 setSelectedTag(value)
-                fetchPostsByTag(value)
                 updateURL()
               }}
             >
@@ -728,7 +826,11 @@ const PostsManager = () => {
           </div>
 
           {/* 게시물 테이블 */}
-          {loading ? <div className="flex justify-center p-4">로딩 중...</div> : renderPostTable()}
+          {isLoading ? (
+            <div className="flex justify-center p-4">로딩 중...</div>
+          ) : (
+            renderPostTable()
+          )}
 
           {/* 페이지네이션 */}
           <div className="flex justify-between items-center">
@@ -901,3 +1003,4 @@ const PostsManager = () => {
 }
 
 export default PostsManager
+
