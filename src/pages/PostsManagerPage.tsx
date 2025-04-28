@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useState, useCallback } from "react"
 import { Edit2, MessageSquare, Plus, Search, ThumbsDown, ThumbsUp, Trash2 } from "lucide-react"
 import { useLocation, useNavigate } from "react-router-dom"
 import {
@@ -117,7 +117,7 @@ const PostsManager = () => {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
   // 순수함수: 쿼리 파라미터를 생성
-  const buildQueryParams = () => {
+  const buildQueryParams = useCallback(() => {
     const params = new URLSearchParams();
     if (skip) params.set("skip", skip.toString());
     if (limit) params.set("limit", limit.toString());
@@ -127,16 +127,16 @@ const PostsManager = () => {
     if (selectedTag) params.set("tag", selectedTag);
 
     return params;
-  }
+  }, [skip, limit, searchQuery, sortBy, sortOrder, selectedTag]);
 
   // URL 업데이트 함수
-  const updateURL = () => {
+  const updateURL = useCallback(() => {
     const params = buildQueryParams();
     navigate(`?${params.toString()}`);
-  };
+  }, [navigate, buildQueryParams]);
 
   // API: 게시물 데이터 가져오기
-  const fetchPostsData = async () => {
+  const fetchPostsData = useCallback(async () => {
     const [postsResponse, usersResponse] = await Promise.all([
       fetch(`/api/posts?limit=${limit}&skip=${skip}`),
       fetch("/api/users?limit=0&select=username,image"),
@@ -145,7 +145,7 @@ const PostsManager = () => {
     const usersData: UsersResponse = await usersResponse.json();
 
     return { postsData, usersData };
-  };
+  }, [limit, skip]);
 
   // 순수함수: posts에 user 정보 추가
   const mergePostsAndUsers = (posts: Post[], users: User[]) => {
@@ -156,7 +156,7 @@ const PostsManager = () => {
   }
 
   // 게시물 가져오기
-  const fetchPosts = async (): Promise<void> => {
+  const fetchPosts = useCallback(async (): Promise<void> => {
     setLoading(true)
     try {
       const { postsData, usersData } = await fetchPostsData();
@@ -168,7 +168,7 @@ const PostsManager = () => {
     } finally {
       setLoading(false);
     }
-  }
+  }, [fetchPostsData]);
 
   // API: 태그 데이터 가져오기
   const fetchTagsData = async () => {
@@ -180,14 +180,18 @@ const PostsManager = () => {
   };
 
   // 태그 가져오기
-  const fetchTags = async () => {
+  const fetchTags = useCallback(async () => {
     try {
       const tagsData = await fetchTagsData();
       setTags(tagsData);
     } catch (error) {
       console.error("태그 가져오기 오류:", error);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    fetchTags();
+  }, [fetchTags]);
 
   const fetchSearchPostsData = async () => {
     const response = await fetch(`/api/posts/search?q=${searchQuery}`);
@@ -230,7 +234,7 @@ const PostsManager = () => {
   }
 
   // 태그별 게시물 가져오기
-  const fetchPostsByTag = async (tag: string) => {
+  const fetchPostsByTag = useCallback(async (tag: string) => {
     if (!tag || tag === "all") {
       fetchPosts();
       return;
@@ -245,7 +249,7 @@ const PostsManager = () => {
       console.error("태그별 게시물 가져오기 오류:", error);
     }
     setLoading(false);
-  }
+  }, [fetchPosts]);
 
   const fetchAddPostData = async () => {
     const response = await fetch("/api/posts/add", {
@@ -478,17 +482,13 @@ const PostsManager = () => {
   }
 
   useEffect(() => {
-    fetchTags();
-  }, []);
-
-  useEffect(() => {
     if (selectedTag) {
       fetchPostsByTag(selectedTag);
     } else {
       fetchPosts();
     }
     updateURL();
-  }, [skip, limit, sortBy, sortOrder, selectedTag]);
+  }, [skip, limit, sortBy, sortOrder, selectedTag, fetchPosts, fetchPostsByTag, updateURL]);
 
   // URLSearchParams 파싱 함수
   const parseQueryParams = (search: string) => {
