@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react"
 import { Edit2, MessageSquare, Plus, Search, ThumbsDown, ThumbsUp, Trash2 } from "lucide-react"
-import { useLocation, useNavigate } from "react-router-dom"
+import { useLocation } from "react-router-dom"
 import {
   Button,
   Card,
@@ -25,6 +25,7 @@ import {
   TableRow,
   Textarea,
 } from "../shared/ui"
+import { useQueryParams } from "../hooks/useQueryParams"
 
 interface Post {
   id: number
@@ -84,7 +85,6 @@ interface UsersResponse {
 }
 
 const PostsManager = () => {
-  const navigate = useNavigate();
   const location = useLocation(); 
   const queryParams = new URLSearchParams(location.search);
 
@@ -115,25 +115,7 @@ const PostsManager = () => {
   const [showPostDetailDialog, setShowPostDetailDialog] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-
-  // 순수함수: 쿼리 파라미터를 생성
-  const buildQueryParams = useCallback(() => {
-    const params = new URLSearchParams();
-    if (skip) params.set("skip", skip.toString());
-    if (limit) params.set("limit", limit.toString());
-    if (searchQuery) params.set("search", searchQuery);
-    if (sortBy) params.set("sortBy", sortBy);
-    if (sortOrder) params.set("sortOrder", sortOrder);
-    if (selectedTag) params.set("tag", selectedTag);
-
-    return params;
-  }, [skip, limit, searchQuery, sortBy, sortOrder, selectedTag]);
-
-  // URL 업데이트 함수
-  const updateURL = useCallback(() => {
-    const params = buildQueryParams();
-    navigate(`?${params.toString()}`);
-  }, [navigate, buildQueryParams]);
+  const { updateURL } = useQueryParams(skip, limit, searchQuery, sortBy, sortOrder, selectedTag);
 
   // API: 게시물 데이터 가져오기
   const fetchPostsData = useCallback(async () => {
