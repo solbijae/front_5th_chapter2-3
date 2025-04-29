@@ -8,7 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from "../../shared/ui";
-import { Post, User } from "../../types";
+import { Post, UserDetail } from "../../config";
 
 interface PostTableProps {
   posts: Post[];
