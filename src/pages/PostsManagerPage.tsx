@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Plus, Search } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import {
@@ -69,22 +69,22 @@ const PostsManager = () => {
     });
   };
 
-  // API: 게시물 데이터 가져오기
-  const fetchPostsData = useCallback(async (): Promise<GetPostList> => {
-    const response = await fetch(`/api/posts?limit=${limit}&skip=${skip}`);
+  const fetchInstance = async (url: string, options?: RequestInit) => {
+    const response = await fetch(url, options);
     if (!response.ok) {
-      throw new Error("게시물 가져오기 오류");
+      throw new Error("데이터 가져오기 오류");
     }
     return await response.json();
+  }
+
+  // API: 게시물 데이터 가져오기
+  const fetchPostsData = useCallback(async (): Promise<GetPostList> => {
+    return await fetchInstance(`/api/posts?limit=${limit}&skip=${skip}`);
   }, [limit, skip]);
 
   // API: 사용자 데이터 가져오기
   const fetchUsersData = useCallback(async (): Promise<GetUserList> => {
-    const response = await fetch("/api/users?limit=0&select=username,image");
-    if (!response.ok) {
-      throw new Error("사용자 가져오기 오류");
-    }
-    return await response.json();
+    return await fetchInstance("/api/users?limit=0&select=username,image");
   }, []);
 
   // 순수함수: posts에 user 정보 추가
@@ -122,11 +122,7 @@ const PostsManager = () => {
 
   // API: 태그 데이터 가져오기
   const fetchTagsData = async (): Promise<GetTag[]> => {
-    const response = await fetch("/api/posts/tags");
-    if (!response.ok) {
-      throw new Error("태그 가져오기 오류");
-    }
-    return await response.json();
+    return await fetchInstance("/api/posts/tags");
   };
 
   // 태그 데이터 가져오기
@@ -148,11 +144,7 @@ const PostsManager = () => {
 
   // API: 검색 결과 가져오기
   const fetchSearchPostsData = async (): Promise<GetPostList> => {
-    const response = await fetch(`/api/posts/search?q=${searchQuery}`);
-    if (!response.ok) {
-      throw new Error("게시물 검색 오류");
-    }
-    return await response.json();
+    return await fetchInstance(`/api/posts/search?q=${searchQuery}`);
   };
 
   // 검색 결과 가져오기
@@ -176,11 +168,7 @@ const PostsManager = () => {
 
   // API: 태그별 게시물 가져오기
   const fetchPostsByTagData = async (tag: string): Promise<GetPostList> => {
-    const response = await fetch(`/api/posts/tag/${tag}`);
-    if (!response.ok) {
-      throw new Error("태그별 게시물 가져오기 오류");
-    }
-    return await response.json();
+    return await fetchInstance(`/api/posts/tag/${tag}`);
   }
 
   // 태그별 게시물 가져오기
@@ -211,15 +199,11 @@ const PostsManager = () => {
 
   // API: 게시물 추가
   const fetchAddPostData = async (): Promise<Post> => {
-    const response = await fetch("/api/posts/add", {
+    return await fetchInstance("/api/posts/add", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(newPost as PostCreateRequestBody),
     });
-    if (!response.ok) {
-      throw new Error("게시물 추가 오류");
-    }
-    return await response.json();
   };
 
   // 게시물 추가
@@ -236,17 +220,11 @@ const PostsManager = () => {
 
   // API: 게시물 업데이트
   const fetchUpdatePostData = async (): Promise<Post> => {
-    const response = await fetch(`/api/posts/${selectedPost?.id}`, {
+    return await fetchInstance(`/api/posts/${selectedPost?.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(selectedPost as PostUpdateRequestBody),
     });
-
-    if (!response.ok) {
-      throw new Error("게시물 업데이트 오류");
-    }
-
-    return await response.json();
   }
 
   // 게시물 업데이트
@@ -262,15 +240,9 @@ const PostsManager = () => {
 
   // API: 게시물 삭제
   const fetchDeletePostData = async (id: number): Promise<Post> => {
-    const response = await fetch(`/api/posts/${id}`, {
+    return await fetchInstance(`/api/posts/${id}`, {
       method: "DELETE",
     });
-
-    if (!response.ok) {
-      throw new Error("게시물 삭제 오류");
-    }
-
-    return await response.json();
   }
 
   // 게시물 삭제
@@ -285,11 +257,7 @@ const PostsManager = () => {
 
   // API: 댓글 가져오기
   const fetchCommentsData = async (postId: number): Promise<GetComment> => {
-    const response = await fetch(`/api/comments/post/${postId}`);
-    if (!response.ok) {
-      throw new Error("댓글 가져오기 오류");
-    }
-    return await response.json();
+    return await fetchInstance(`/api/comments/post/${postId}`);
   }
 
   const { data: commentsData, isLoading: isCommentsLoading } = useQuery({
@@ -310,17 +278,11 @@ const PostsManager = () => {
 
   // API: 댓글 추가
   const fetchAddCommentData = async (): Promise<CommentDetail> => {
-    const response = await fetch("/api/comments/add", {
+    return await fetchInstance("/api/comments/add", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(newComment as PostCreateCommentRequestBody),
     });
-
-    if (!response.ok) {
-      throw new Error("댓글 추가 오류");
-    }
-
-    return await response.json();
   }
 
   // 댓글 추가
@@ -340,17 +302,11 @@ const PostsManager = () => {
 
   // API: 댓글 업데이트
   const fetchUpdateCommentData = async (): Promise<CommentDetail> => {
-    const response = await fetch(`/api/comments/${selectedComment?.id}`, {
+    return await fetchInstance(`/api/comments/${selectedComment?.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ body: selectedComment?.body } as PutUpdateCommentRequestBody),
     });
-
-    if (!response.ok) {
-      throw new Error("댓글 업데이트 오류");
-    }
-
-    return await response.json();
   }
 
   // 댓글 업데이트
@@ -369,15 +325,9 @@ const PostsManager = () => {
 
   // API: 댓글 삭제
   const fetchDeleteCommentData = async (id: number): Promise<CommentDetail> => {
-    const response = await fetch(`/api/comments/${id}`, {
+    return await fetchInstance(`/api/comments/${id}`, {
       method: "DELETE",
     });
-
-    if (!response.ok) {
-      throw new Error("댓글 삭제 오류");
-    }
-
-    return await response.json();
   }
 
   // 댓글 삭제
@@ -395,17 +345,11 @@ const PostsManager = () => {
 
   // API: 댓글 좋아요
   const fetchLikeCommentData = async (id: number, postId: number): Promise<CommentDetail> => {
-    const response = await fetch(`/api/comments/${id}`, {
+    return await fetchInstance(`/api/comments/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ likes: (comments[postId]?.find((c) => c.id === id)?.likes || 0) + 1 }),
     });
-
-    if (!response.ok) {
-      throw new Error("댓글 좋아요 오류");
-    }
-
-    return await response.json();
   }
 
   // 댓글 좋아요
@@ -431,11 +375,7 @@ const PostsManager = () => {
 
   // API: 사용자 정보 가져오기
   const fetchOpenUserModalData = async (user: UserDetail | null): Promise<UserDetail> => {
-    const response = await fetch(`/api/users/${user?.id}`);
-    if (!response.ok) {
-      throw new Error("사용자 정보 가져오기 오류");
-    }
-    return await response.json();
+    return await fetchInstance(`/api/users/${user?.id}`);
   }
 
   // 사용자 정보 가져오기
