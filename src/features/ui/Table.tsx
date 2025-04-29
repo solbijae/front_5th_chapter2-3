@@ -9,19 +9,20 @@ import {
   TableRow,
 } from "../../shared/ui";
 import { Post, UserDetail } from "../../config";
+import { Dispatch, SetStateAction } from "react";
 
 interface PostTableProps {
-  posts: Post[];
-  searchQuery: string;
-  selectedTag: string;
-  setSelectedTag: (tag: string) => void;
-  updateURL: () => void;
-  openUserModal: (user: User | undefined) => void;
-  openPostDetail: (post: Post) => void;
-  deletePost: (id: number) => void;
-  setSelectedPost: (post: Post) => void;
-  setShowEditDialog: (show: boolean) => void;
-  highlightText: (text: string, query: string) => React.ReactNode;
+  posts: Post[]
+  searchQuery: string
+  selectedTag: string
+  setSelectedTag: Dispatch<SetStateAction<string>>
+  updateURL: () => void
+  deletePost: (id: number) => void
+  setSelectedPost: (post: Post) => void
+  setShowEditDialog: (show: boolean) => void
+  highlightText: (text: string, query: string) => React.ReactNode
+  openUserModal: Dispatch<SetStateAction<UserDetail | null>>;
+  openPostDetail: (post: Post) => void
 }
 
 export const PostTable = ({
@@ -76,7 +77,10 @@ export const PostTable = ({
             </div>
           </TableCell>
           <TableCell>
-            <div className="flex items-center space-x-2 cursor-pointer" onClick={() => openUserModal(post.author)}>
+            <div 
+              className="flex items-center space-x-2 cursor-pointer"               
+              onClick={() => post.author && openUserModal(post.author as UserDetail)}
+            >
               <img src={post.author?.image} alt={post.author?.username} className="w-8 h-8 rounded-full" />
               <span>{post.author?.username}</span>
             </div>

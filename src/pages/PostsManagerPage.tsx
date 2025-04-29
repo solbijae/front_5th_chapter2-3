@@ -22,9 +22,10 @@ import {
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useQueryParams } from "../hooks/useQueryParams";
 import { STALE_TIME, GC_TIME } from "../config/cache";
-import { Post, User, Comment, PostsResponse, UsersResponse } from "../types";
 import { PostTable } from "../features/ui/Table";
 import { Comments } from "../features/ui/Comments";
+import { Post, User, DeleteCommentRequestParams, PostCreateRequestBody, GetTag, CommentDetail, PostCreateCommentRequestBody, UserDetail, GetComment, GetPostList, GetUserList, PostUpdateRequestBody, PutUpdateCommentRequestBody, PatchLikeCommentRequestBody } from "../config";
+
 const PostsManager = () => {
   const location = useLocation(); 
   const queryParams = new URLSearchParams(location.search);
@@ -41,21 +42,17 @@ const PostsManager = () => {
   const [sortOrder, setSortOrder] = useState(queryParams.get("sortOrder") || "asc");
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
-  const [newPost, setNewPost] = useState({ title: "", body: "", userId: 1 });
-  const [tags, setTags] = useState<{ url: string; slug: string }[]>([]);
+  const [newPost, setNewPost] = useState<PostCreateRequestBody>({ title: "", body: "", userId: 1 });
+  const [tags, setTags] = useState<GetTag[]>([]);
   const [selectedTag, setSelectedTag] = useState(queryParams.get("tag") || "");
-  const [comments, setComments] = useState<Record<number, Comment[]>>({});
-  const [selectedComment, setSelectedComment] = useState<Comment | null>(null);
-  const [newComment, setNewComment] = useState<{ body: string; postId: number | null; userId: number }>({
-    body: "",
-    postId: null,
-    userId: 1,
-  });
+  const [comments, setComments] = useState<Record<number, CommentDetail[]>>({});
+  const [selectedComment, setSelectedComment] = useState<CommentDetail | null>(null);
+  const [newComment, setNewComment] = useState<PostCreateCommentRequestBody>({ body: "", postId: 0, userId: 1 });
   const [showAddCommentDialog, setShowAddCommentDialog] = useState(false);
   const [showEditCommentDialog, setShowEditCommentDialog] = useState(false);
   const [showPostDetailDialog, setShowPostDetailDialog] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [selectedUser, setSelectedUser] = useState<UserDetail | null>(null);
   const [, setError] = useState<string | null>(null);
   const { updateURL } = useQueryParams(skip, limit, searchQuery, sortBy, sortOrder, selectedTag);
 
@@ -73,29 +70,41 @@ const PostsManager = () => {
   };
 
   // API: 게시물 데이터 가져오기
-  const fetchPostsData = useCallback(async () => {
-    const [postsResponse, usersResponse] = await Promise.all([
-      fetch(`/api/posts?limit=${limit}&skip=${skip}`),
-      fetch("/api/users?limit=0&select=username,image"),
-    ])
-    const postsData: PostsResponse = await postsResponse.json();
-    const usersData: UsersResponse = await usersResponse.json();
-
-    return { postsData, usersData };
+  const fetchPostsData = useCallback(async (): Promise<GetPostList> => {
+    const response = await fetch(`/api/posts?limit=${limit}&skip=${skip}`);
+    if (!response.ok) {
+      throw new Error("게시물 가져오기 오류");
+    }
+    return await response.json();
   }, [limit, skip]);
+
+  // API: 사용자 데이터 가져오기
+  const fetchUsersData = useCallback(async (): Promise<GetUserList> => {
+    const response = await fetch("/api/users?limit=0&select=username,image");
+    if (!response.ok) {
+      throw new Error("사용자 가져오기 오류");
+    }
+    return await response.json();
+  }, []);
 
   // 순수함수: posts에 user 정보 추가
   const mergePostsAndUsers = (posts: Post[], users: User[]) => {
-    return posts.map((post: Post) => ({
+    return posts.map((post) => ({
       ...post,
-      author: users.find((user: User) => user.id === post.userId),
+      author: users.find((user) => user.id === post.userId),
     }))
   }
 
   // 게시물 데이터 가져오기
-  const { data: postsData, isLoading: isPostsLoading } = useQuery<{ postsData: PostsResponse; usersData: UsersResponse }>({
+  const { data: postsData, isLoading: isPostsLoading } = useQuery({
     queryKey: ["posts", skip, limit, searchQuery, sortBy, sortOrder, selectedTag],
-    queryFn: fetchPostsData,
+    queryFn: async () => {
+      const [postsResponse, usersResponse] = await Promise.all([
+        fetchPostsData(),
+        fetchUsersData()
+      ]);
+      return { postsData: postsResponse, usersData: usersResponse };
+    },
     staleTime: STALE_TIME,
     gcTime: GC_TIME,
     retry: 3,
@@ -112,7 +121,7 @@ const PostsManager = () => {
   }, [postsData]);
 
   // API: 태그 데이터 가져오기
-  const fetchTagsData = async () => {
+  const fetchTagsData = async (): Promise<GetTag[]> => {
     const response = await fetch("/api/posts/tags");
     if (!response.ok) {
       throw new Error("태그 가져오기 오류");
@@ -121,7 +130,7 @@ const PostsManager = () => {
   };
 
   // 태그 데이터 가져오기
-  const { data: tagsData, isLoading: isTagsLoading } = useQuery<{ url: string; slug: string }[]>({
+  const { data: tagsData, isLoading: isTagsLoading } = useQuery({
     queryKey: ["tags"],
     queryFn: fetchTagsData,
     staleTime: STALE_TIME,
@@ -138,7 +147,7 @@ const PostsManager = () => {
   }, [tagsData]);
 
   // API: 검색 결과 가져오기
-  const fetchSearchPostsData = async () => {
+  const fetchSearchPostsData = async (): Promise<GetPostList> => {
     const response = await fetch(`/api/posts/search?q=${searchQuery}`);
     if (!response.ok) {
       throw new Error("게시물 검색 오류");
@@ -147,7 +156,7 @@ const PostsManager = () => {
   };
 
   // 검색 결과 가져오기
-  const { data: searchData, isLoading: isSearchLoading } = useQuery<{ posts: Post[]; total: number }>({
+  const { data: searchData, isLoading: isSearchLoading } = useQuery({
     queryKey: ['posts', 'search', searchQuery],
     queryFn: fetchSearchPostsData,
     enabled: !!searchQuery,
@@ -166,25 +175,24 @@ const PostsManager = () => {
   }, [searchData]);
 
   // API: 태그별 게시물 가져오기
-  const fetchPostsByTagData = async (tag: string) => {
-    const [postsResponse, usersResponse] = await Promise.all([
-      fetch(`/api/posts/tag/${tag}`),
-      fetch("/api/users?limit=0&select=username,image"),
-    ])
-    if (!postsResponse.ok || !usersResponse.ok) {
+  const fetchPostsByTagData = async (tag: string): Promise<GetPostList> => {
+    const response = await fetch(`/api/posts/tag/${tag}`);
+    if (!response.ok) {
       throw new Error("태그별 게시물 가져오기 오류");
     }
-
-    return {
-      postsData: await postsResponse.json(),
-      usersData: await usersResponse.json(),
-    }
+    return await response.json();
   }
 
   // 태그별 게시물 가져오기
-  const { data: tagData, isLoading: isTagLoading } = useQuery<{ postsData: PostsResponse; usersData: UsersResponse }>({
+  const { data: tagData, isLoading: isTagLoading } = useQuery({
     queryKey: ['posts', 'tag', selectedTag],
-    queryFn: () => fetchPostsByTagData(selectedTag),
+    queryFn: async () => {
+      const [postsResponse, usersResponse] = await Promise.all([
+        fetchPostsByTagData(selectedTag),
+        fetchUsersData()
+      ]);
+      return { postsData: postsResponse, usersData: usersResponse };
+    },
     enabled: !!selectedTag && selectedTag !== "all",
     staleTime: STALE_TIME,
     gcTime: GC_TIME,
@@ -202,22 +210,20 @@ const PostsManager = () => {
   }, [tagData]);
 
   // API: 게시물 추가
-  const fetchAddPostData = async () => {
+  const fetchAddPostData = async (): Promise<Post> => {
     const response = await fetch("/api/posts/add", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newPost),
+      body: JSON.stringify(newPost as PostCreateRequestBody),
     });
-
     if (!response.ok) {
       throw new Error("게시물 추가 오류");
     }
-
     return await response.json();
-  }
+  };
 
   // 게시물 추가
-  const addPostMutation = useMutation<Post>({
+  const addPostMutation = useMutation({
     mutationFn: fetchAddPostData,
     onSuccess: (data) => {
       setPosts([data, ...posts]);
@@ -229,11 +235,11 @@ const PostsManager = () => {
   });
 
   // API: 게시물 업데이트
-  const fetchUpdatePostData = async () => {
+  const fetchUpdatePostData = async (): Promise<Post> => {
     const response = await fetch(`/api/posts/${selectedPost?.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(selectedPost),
+      body: JSON.stringify(selectedPost as PostUpdateRequestBody),
     });
 
     if (!response.ok) {
@@ -244,7 +250,7 @@ const PostsManager = () => {
   }
 
   // 게시물 업데이트
-  const updatePostMutation = useMutation<Post>({
+  const updatePostMutation = useMutation({
     mutationFn: fetchUpdatePostData,
     onSuccess: (data) => {
       setPosts(posts.map((post) => (post.id === data.id ? data : post)));
@@ -255,7 +261,7 @@ const PostsManager = () => {
   });
 
   // API: 게시물 삭제
-  const fetchDeletePostData = async (id: number) => {
+  const fetchDeletePostData = async (id: number): Promise<Post> => {
     const response = await fetch(`/api/posts/${id}`, {
       method: "DELETE",
     });
@@ -268,7 +274,7 @@ const PostsManager = () => {
   }
 
   // 게시물 삭제
-  const deletePostMutation = useMutation<void, Error, number>({
+  const deletePostMutation = useMutation({
     mutationFn: fetchDeletePostData,
     onSuccess: (_, id) => {
       setPosts(posts.filter((post) => post.id !== id));
@@ -278,7 +284,7 @@ const PostsManager = () => {
   });
 
   // API: 댓글 가져오기
-  const fetchCommentsData = async (postId: number) => {
+  const fetchCommentsData = async (postId: number): Promise<GetComment> => {
     const response = await fetch(`/api/comments/post/${postId}`);
     if (!response.ok) {
       throw new Error("댓글 가져오기 오류");
@@ -286,7 +292,7 @@ const PostsManager = () => {
     return await response.json();
   }
 
-  const { data: commentsData, isLoading: isCommentsLoading } = useQuery<{ comments: Comment[] }>({
+  const { data: commentsData, isLoading: isCommentsLoading } = useQuery({
     queryKey: ['comments', selectedPost?.id],
     queryFn: () => fetchCommentsData(selectedPost?.id || 0),
     enabled: !!selectedPost?.id,
@@ -303,11 +309,11 @@ const PostsManager = () => {
   }, [commentsData, selectedPost?.id]);
 
   // API: 댓글 추가
-  const fetchAddCommentData = async () => {
+  const fetchAddCommentData = async (): Promise<CommentDetail> => {
     const response = await fetch("/api/comments/add", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newComment),
+      body: JSON.stringify(newComment as PostCreateCommentRequestBody),
     });
 
     if (!response.ok) {
@@ -318,7 +324,7 @@ const PostsManager = () => {
   }
 
   // 댓글 추가
-  const addCommentMutation = useMutation<Comment>({
+  const addCommentMutation = useMutation({
     mutationFn: fetchAddCommentData,
     onSuccess: (data) => {
       setComments((prev) => ({
@@ -326,18 +332,18 @@ const PostsManager = () => {
         [data.postId]: [...(prev[data.postId] || []), data],
       }));
       setShowAddCommentDialog(false);
-      setNewComment({ body: "", postId: null, userId: 1 });
+      setNewComment({ body: "", postId: 0, userId: 1 });
       invalidateQueries(['comments']);
     },
     onError: handleError
   });
 
   // API: 댓글 업데이트
-  const fetchUpdateCommentData = async () => {
+  const fetchUpdateCommentData = async (): Promise<CommentDetail> => {
     const response = await fetch(`/api/comments/${selectedComment?.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ body: selectedComment?.body }),
+      body: JSON.stringify({ body: selectedComment?.body } as PutUpdateCommentRequestBody),
     });
 
     if (!response.ok) {
@@ -348,7 +354,7 @@ const PostsManager = () => {
   }
 
   // 댓글 업데이트
-  const updateCommentMutation = useMutation<Comment>({
+  const updateCommentMutation = useMutation({
     mutationFn: fetchUpdateCommentData,
     onSuccess: (data) => {
       setComments((prev) => ({
@@ -362,7 +368,7 @@ const PostsManager = () => {
   });
 
   // API: 댓글 삭제
-  const fetchDeleteCommentData = async (id: number) => {
+  const fetchDeleteCommentData = async (id: number): Promise<CommentDetail> => {
     const response = await fetch(`/api/comments/${id}`, {
       method: "DELETE",
     });
@@ -375,8 +381,8 @@ const PostsManager = () => {
   }
 
   // 댓글 삭제
-  const deleteCommentMutation = useMutation<void, Error, { id: number; postId: number }>({
-    mutationFn: ({ id }) => fetchDeleteCommentData(id),
+  const deleteCommentMutation = useMutation({
+    mutationFn: ({ id }: DeleteCommentRequestParams) => fetchDeleteCommentData(id),
     onSuccess: (_, variables) => {
       setComments((prev) => ({
         ...prev,
@@ -388,7 +394,7 @@ const PostsManager = () => {
   });
 
   // API: 댓글 좋아요
-  const fetchLikeCommentData = async (id: number, postId: number) => {
+  const fetchLikeCommentData = async (id: number, postId: number): Promise<CommentDetail> => {
     const response = await fetch(`/api/comments/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -403,7 +409,7 @@ const PostsManager = () => {
   }
 
   // 댓글 좋아요
-  const likeCommentMutation = useMutation<Comment, Error, { id: number; postId: number }>({
+  const likeCommentMutation = useMutation<CommentDetail, Error, PatchLikeCommentRequestBody>({
     mutationFn: ({ id, postId }) => fetchLikeCommentData(id, postId),
     onSuccess: (data, { postId }) => {
       setComments((prev) => ({
@@ -418,13 +424,13 @@ const PostsManager = () => {
   });
 
   // 게시물 상세 보기
-  const openPostDetail = (post: Post) => {
+  const openPostDetail = (post: Post): void => {
     setSelectedPost(post)
     setShowPostDetailDialog(true)
   }
 
   // API: 사용자 정보 가져오기
-  const fetchOpenUserModalData = async (user: User | null) => {
+  const fetchOpenUserModalData = async (user: UserDetail | null): Promise<UserDetail> => {
     const response = await fetch(`/api/users/${user?.id}`);
     if (!response.ok) {
       throw new Error("사용자 정보 가져오기 오류");
@@ -433,7 +439,7 @@ const PostsManager = () => {
   }
 
   // 사용자 정보 가져오기
-  const { data: userData, isLoading: isUserLoading } = useQuery<User>({
+  const { data: userData, isLoading: isUserLoading } = useQuery({
     queryKey: ['user', selectedUser?.id],
     queryFn: () => fetchOpenUserModalData(selectedUser),
     enabled: !!selectedUser?.id,
@@ -449,11 +455,6 @@ const PostsManager = () => {
       setShowUserModal(true);
     }
   }, [userData]);
-
-  // 사용자 모달 열기
-  const openUserModal = (user: User | undefined) => {
-    setSelectedUser(user || null);
-  }
 
   // URL 업데이트
   useEffect(() => {
@@ -493,7 +494,7 @@ const PostsManager = () => {
   }, [location.search]);
 
   // 순수함수: 하이라이트된 부분 찾기
-  const splitTextWithHighlight = (text: string, highlight: string): string[] => {
+  const splitTextWithHighlight = (text: string, highlight: string) => {
     if (!highlight.trim()) return [text];
     
     const regex = new RegExp(`(${highlight})`, "gi");
@@ -515,7 +516,7 @@ const PostsManager = () => {
   };
 
   // UI: 실제 하이라이팅 기능을 수행
-  const highlightText = (text: string | undefined, highlight: string): React.ReactElement | null => {
+  const highlightText = (text: string, highlight: string) => {
     if (!text) return null;
     const parts = splitTextWithHighlight(text, highlight);
     return <span>{renderHighlightedText(parts, highlight)}</span>;
@@ -559,6 +560,10 @@ const PostsManager = () => {
   // 로딩 상태 통합
   const isLoading = isPostsLoading || isTagsLoading || isCommentsLoading || isUserLoading || isSearchLoading || isTagLoading;
 
+  const handleNewComment = (comment: { body: string; postId: number | null; userId: number }) => {
+    setNewComment({ body: comment.body, postId: comment.postId || 0, userId: comment.userId });
+  };
+  
   return (
     <Card className="w-full max-w-6xl mx-auto">
       <CardHeader>
@@ -637,7 +642,7 @@ const PostsManager = () => {
               selectedTag={selectedTag}
               setSelectedTag={setSelectedTag}
               updateURL={updateURL}
-              openUserModal={openUserModal}
+              openUserModal={setSelectedUser}
               openPostDetail={openPostDetail}
               deletePost={deletePost}
               setSelectedPost={setSelectedPost}
@@ -713,7 +718,7 @@ const PostsManager = () => {
             <Input
               placeholder="제목"
               value={selectedPost?.title || ""}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              onChange={(e) =>
                 setSelectedPost(selectedPost ? { ...selectedPost, title: e.target.value } : null)
               }
             />
@@ -721,7 +726,7 @@ const PostsManager = () => {
               rows={15}
               placeholder="내용"
               value={selectedPost?.body || ""}
-              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+              onChange={(e) =>
                 setSelectedPost(selectedPost ? { ...selectedPost, body: e.target.value } : null)
               }
             />
@@ -768,16 +773,16 @@ const PostsManager = () => {
 
       {/* 게시물 상세 보기 대화상자 */}
       <Dialog open={showPostDetailDialog} onOpenChange={setShowPostDetailDialog}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-3xl overflow-auto">
           <DialogHeader>
-            <DialogTitle>{highlightText(selectedPost?.title, searchQuery)}</DialogTitle>
+            <DialogTitle>{selectedPost?.title ? highlightText(selectedPost.title, searchQuery) : ''}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <p>{highlightText(selectedPost?.body, searchQuery)}</p>
+          <div className="space-y-4 max-h-[80vh] overflow-y-auto">
+            <p>{selectedPost?.body ? highlightText(selectedPost.body, searchQuery) : ''}</p>
             <Comments
               postId={selectedPost?.id}
               comments={comments[selectedPost?.id || 0]}
-              setNewComment={setNewComment}
+              setNewComment={handleNewComment}
               setShowAddCommentDialog={setShowAddCommentDialog}
               setSelectedComment={setSelectedComment}
               setShowEditCommentDialog={setShowEditCommentDialog}

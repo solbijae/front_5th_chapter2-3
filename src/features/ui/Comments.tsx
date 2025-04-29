@@ -1,13 +1,12 @@
 import { Edit2, Plus, ThumbsUp, Trash2 } from "lucide-react";
 import { Button } from "../../shared/ui";
-import { Comment } from "../../config";
-
+import { CommentDetail } from "../../config";
 interface CommentsProps {
   postId: number | undefined;
-  comments: Comment[];
+  comments: CommentDetail[];
   setNewComment: (comment: { body: string; postId: number | null; userId: number }) => void;
   setShowAddCommentDialog: (show: boolean) => void;
-  setSelectedComment: (comment: Comment | null) => void;
+  setSelectedComment: (comment: CommentDetail | null) => void;
   setShowEditCommentDialog: (show: boolean) => void;
   deleteComment: (id: number, postId: number) => void;
   likeComment: (id: number, postId: number) => void;
@@ -44,7 +43,7 @@ export const Comments = ({
         </Button>
       </div>
       <div className="space-y-1">
-        {comments.map((comment: Comment) => (
+        {comments?.map((comment: CommentDetail) => (
           <div key={comment.id} className="flex items-center justify-between text-sm border-b pb-1">
             <div className="flex items-center space-x-2 overflow-hidden">
               <span className="font-medium truncate">{comment.user.username}:</span>
