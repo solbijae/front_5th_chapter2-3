@@ -36,4 +36,4 @@ export type GetPostList = {
 
 export type PostCreateRequestBody = Pick<Post, "title" | "body" | "userId">;
 
-export type PostUpdateRequestBody = Pick<Post, "title" | "body">;
+export type PostUpdateRequestBody = Pick<Post, "id" | "title" | "body">;

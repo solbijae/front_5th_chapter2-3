@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { Plus, Search } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import {
@@ -24,8 +24,10 @@ import { useQueryParams } from "../hooks/useQueryParams";
 import { STALE_TIME, GC_TIME } from "../config/cache";
 import { PostTable } from "../features/ui/Table";
 import { Comments } from "../features/ui/Comments";
-import { Post, User, DeleteCommentRequestParams, PostCreateRequestBody, GetTag, CommentDetail, PostCreateCommentRequestBody, UserDetail, GetComment, GetPostList, GetUserList, PostUpdateRequestBody, PutUpdateCommentRequestBody, PatchLikeCommentRequestBody } from "../config";
-import { fetchInstance } from "../lib/fetchInstance";
+import { Post, User, DeleteCommentRequestParams, PostCreateRequestBody, GetTag, CommentDetail, PostCreateCommentRequestBody, UserDetail, PatchLikeCommentRequestBody } from "../config";
+import { fetchPostsData, fetchTagsData, fetchSearchPostsData, fetchPostsByTagData, fetchAddPostData, fetchDeletePostData, fetchUpdatePostData } from "../api/post";
+import { fetchUsersData, fetchOpenUserModalData } from "../api/user";
+import { fetchCommentsData, fetchAddCommentData, fetchUpdateCommentData, fetchDeleteCommentData, fetchLikeCommentData } from "../api/comment";
 
 const PostsManager = () => {
   const location = useLocation(); 
@@ -70,16 +72,6 @@ const PostsManager = () => {
     });
   };
 
-  // API: 게시물 데이터 가져오기
-  const fetchPostsData = useCallback(async (): Promise<GetPostList> => {
-    return await fetchInstance(`/api/posts?limit=${limit}&skip=${skip}`);
-  }, [limit, skip]);
-
-  // API: 사용자 데이터 가져오기
-  const fetchUsersData = useCallback(async (): Promise<GetUserList> => {
-    return await fetchInstance("/api/users?limit=0&select=username,image");
-  }, []);
-
   // 순수함수: posts에 user 정보 추가
   const mergePostsAndUsers = (posts: Post[], users: User[]) => {
     return posts.map((post) => ({
@@ -93,7 +85,7 @@ const PostsManager = () => {
     queryKey: ["posts", skip, limit, searchQuery, sortBy, sortOrder, selectedTag],
     queryFn: async () => {
       const [postsResponse, usersResponse] = await Promise.all([
-        fetchPostsData(),
+        fetchPostsData(limit, skip),
         fetchUsersData()
       ]);
       return { postsData: postsResponse, usersData: usersResponse };
@@ -113,11 +105,6 @@ const PostsManager = () => {
     }
   }, [postsData]);
 
-  // API: 태그 데이터 가져오기
-  const fetchTagsData = async (): Promise<GetTag[]> => {
-    return await fetchInstance("/api/posts/tags");
-  };
-
   // 태그 데이터 가져오기
   const { data: tagsData, isLoading: isTagsLoading } = useQuery({
     queryKey: ["tags"],
@@ -135,15 +122,10 @@ const PostsManager = () => {
     }
   }, [tagsData]);
 
-  // API: 검색 결과 가져오기
-  const fetchSearchPostsData = async (): Promise<GetPostList> => {
-    return await fetchInstance(`/api/posts/search?q=${searchQuery}`);
-  };
-
   // 검색 결과 가져오기
   const { data: searchData, isLoading: isSearchLoading } = useQuery({
     queryKey: ['posts', 'search', searchQuery],
-    queryFn: fetchSearchPostsData,
+    queryFn: () => fetchSearchPostsData(searchQuery),
     enabled: !!searchQuery,
     staleTime: STALE_TIME,
     gcTime: GC_TIME,
@@ -158,11 +140,6 @@ const PostsManager = () => {
       setTotal(searchData.total);
     }
   }, [searchData]);
-
-  // API: 태그별 게시물 가져오기
-  const fetchPostsByTagData = async (tag: string): Promise<GetPostList> => {
-    return await fetchInstance(`/api/posts/tag/${tag}`);
-  }
 
   // 태그별 게시물 가져오기
   const { data: tagData, isLoading: isTagLoading } = useQuery({
@@ -190,18 +167,9 @@ const PostsManager = () => {
     }
   }, [tagData]);
 
-  // API: 게시물 추가
-  const fetchAddPostData = async (): Promise<Post> => {
-    return await fetchInstance("/api/posts/add", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newPost as PostCreateRequestBody),
-    });
-  };
-
   // 게시물 추가
   const addPostMutation = useMutation({
-    mutationFn: fetchAddPostData,
+    mutationFn: () => fetchAddPostData(newPost),
     onSuccess: (data) => {
       setPosts([data, ...posts]);
       setShowAddDialog(false);
@@ -211,18 +179,9 @@ const PostsManager = () => {
     onError: handleError
   });
 
-  // API: 게시물 업데이트
-  const fetchUpdatePostData = async (): Promise<Post> => {
-    return await fetchInstance(`/api/posts/${selectedPost?.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(selectedPost as PostUpdateRequestBody),
-    });
-  }
-
   // 게시물 업데이트
   const updatePostMutation = useMutation({
-    mutationFn: fetchUpdatePostData,
+    mutationFn: () => fetchUpdatePostData(selectedPost),
     onSuccess: (data) => {
       setPosts(posts.map((post) => (post.id === data.id ? data : post)));
       setShowEditDialog(false);
@@ -230,13 +189,6 @@ const PostsManager = () => {
     },
     onError: handleError
   });
-
-  // API: 게시물 삭제
-  const fetchDeletePostData = async (id: number): Promise<Post> => {
-    return await fetchInstance(`/api/posts/${id}`, {
-      method: "DELETE",
-    });
-  }
 
   // 게시물 삭제
   const deletePostMutation = useMutation({
@@ -247,11 +199,6 @@ const PostsManager = () => {
     },
     onError: handleError
   });
-
-  // API: 댓글 가져오기
-  const fetchCommentsData = async (postId: number): Promise<GetComment> => {
-    return await fetchInstance(`/api/comments/post/${postId}`);
-  }
 
   const { data: commentsData, isLoading: isCommentsLoading } = useQuery({
     queryKey: ['comments', selectedPost?.id],
@@ -269,18 +216,9 @@ const PostsManager = () => {
     }
   }, [commentsData, selectedPost?.id]);
 
-  // API: 댓글 추가
-  const fetchAddCommentData = async (): Promise<CommentDetail> => {
-    return await fetchInstance("/api/comments/add", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newComment as PostCreateCommentRequestBody),
-    });
-  }
-
   // 댓글 추가
   const addCommentMutation = useMutation({
-    mutationFn: fetchAddCommentData,
+    mutationFn: () => fetchAddCommentData(newComment),
     onSuccess: (data) => {
       setComments((prev) => ({
         ...prev,
@@ -293,18 +231,9 @@ const PostsManager = () => {
     onError: handleError
   });
 
-  // API: 댓글 업데이트
-  const fetchUpdateCommentData = async (): Promise<CommentDetail> => {
-    return await fetchInstance(`/api/comments/${selectedComment?.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ body: selectedComment?.body } as PutUpdateCommentRequestBody),
-    });
-  }
-
   // 댓글 업데이트
   const updateCommentMutation = useMutation({
-    mutationFn: fetchUpdateCommentData,
+    mutationFn: () => fetchUpdateCommentData(selectedComment),
     onSuccess: (data) => {
       setComments((prev) => ({
         ...prev,
@@ -315,13 +244,6 @@ const PostsManager = () => {
     },
     onError: handleError
   });
-
-  // API: 댓글 삭제
-  const fetchDeleteCommentData = async (id: number): Promise<CommentDetail> => {
-    return await fetchInstance(`/api/comments/${id}`, {
-      method: "DELETE",
-    });
-  }
 
   // 댓글 삭제
   const deleteCommentMutation = useMutation({
@@ -336,18 +258,12 @@ const PostsManager = () => {
     onError: handleError
   });
 
-  // API: 댓글 좋아요
-  const fetchLikeCommentData = async (id: number, postId: number): Promise<CommentDetail> => {
-    return await fetchInstance(`/api/comments/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ likes: (comments[postId]?.find((c) => c.id === id)?.likes || 0) + 1 }),
-    });
-  }
-
   // 댓글 좋아요
   const likeCommentMutation = useMutation<CommentDetail, Error, PatchLikeCommentRequestBody>({
-    mutationFn: ({ id, postId }) => fetchLikeCommentData(id, postId),
+    mutationFn: ({ id, postId }) => {
+      const currentLikes = comments[postId]?.find((c) => c.id === id)?.likes || 0;
+      return fetchLikeCommentData(id, currentLikes);
+    },
     onSuccess: (data, { postId }) => {
       setComments((prev) => ({
         ...prev,
@@ -365,12 +281,7 @@ const PostsManager = () => {
     setSelectedPost(post)
     setShowPostDetailDialog(true)
   }
-
-  // API: 사용자 정보 가져오기
-  const fetchOpenUserModalData = async (user: UserDetail | null): Promise<UserDetail> => {
-    return await fetchInstance(`/api/users/${user?.id}`);
-  }
-
+  
   // 사용자 정보 가져오기
   const { data: userData, isLoading: isUserLoading } = useQuery({
     queryKey: ['user', selectedUser?.id],
