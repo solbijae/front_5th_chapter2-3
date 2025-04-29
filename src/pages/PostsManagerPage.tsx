@@ -25,6 +25,7 @@ import { STALE_TIME, GC_TIME } from "../config/cache";
 import { PostTable } from "../features/ui/Table";
 import { Comments } from "../features/ui/Comments";
 import { Post, User, DeleteCommentRequestParams, PostCreateRequestBody, GetTag, CommentDetail, PostCreateCommentRequestBody, UserDetail, GetComment, GetPostList, GetUserList, PostUpdateRequestBody, PutUpdateCommentRequestBody, PatchLikeCommentRequestBody } from "../config";
+import { fetchInstance } from "../lib/fetchInstance";
 
 const PostsManager = () => {
   const location = useLocation(); 
@@ -68,14 +69,6 @@ const PostsManager = () => {
       queryClient.invalidateQueries({ queryKey: [key] });
     });
   };
-
-  const fetchInstance = async (url: string, options?: RequestInit) => {
-    const response = await fetch(url, options);
-    if (!response.ok) {
-      throw new Error("데이터 가져오기 오류");
-    }
-    return await response.json();
-  }
 
   // API: 게시물 데이터 가져오기
   const fetchPostsData = useCallback(async (): Promise<GetPostList> => {
