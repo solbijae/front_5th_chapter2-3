@@ -19,17 +19,25 @@ import {
   SelectValue,
   Textarea,
 } from "../shared/ui";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useQueryParams } from "../hooks/useQueryParams";
-import { STALE_TIME, GC_TIME } from "../config/cache";
 import { PostTable } from "../features/ui/Table";
 import { Comments } from "../features/ui/Comments";
-import { Post, User, DeleteCommentRequestParams, PostCreateRequestBody, GetTag, CommentDetail, PostCreateCommentRequestBody, UserDetail, PatchLikeCommentRequestBody } from "../config";
-import { fetchPostsData, fetchTagsData, fetchSearchPostsData, fetchPostsByTagData, fetchAddPostData, fetchDeletePostData, fetchUpdatePostData } from "../api/post";
-import { fetchUsersData, fetchOpenUserModalData } from "../api/user";
-import { fetchCommentsData, fetchAddCommentData, fetchUpdateCommentData, fetchDeleteCommentData, fetchLikeCommentData } from "../api/comment";
-import { handleError } from "../shared/lib/queryError";
-import { invalidateQueries } from "../shared/lib/queryInvalidate";
+import { Post, PostCreateRequestBody, GetTag, CommentDetail, PostCreateCommentRequestBody, UserDetail } from "../config";
+import { mergePostsAndUsers } from "../entities/post/lib/mergePostsAndUsers";
+import { usePostsWithUsersQuery } from "../entities/post/model/useGetPostsWithUsers";
+import { useGetTagQuery } from "../entities/post/model/useGetTags";
+import { useGetSearchQuery } from "../entities/post/model/useGetPostsBySearch";
+import { useGetPostsByTag } from "../entities/post/model/useGetPostsByTag";
+import { useAddPost } from "../entities/post/model/useAddPost";
+import { useUpdatePost } from "../entities/post/model/useUpdatePost";
+import { useDeletePost } from "../entities/post/model/useDeletePost";
+import { useGetComments } from "../entities/comment/model/useGetComments";
+import { useAddComment } from "../entities/comment/model/useAddComment";
+import { useUpdateComment } from "../entities/comment/model/useUpdateComment";
+import { useDeleteComment } from "../entities/comment/model/useDeleteComment";
+import { useLikeComment } from "../entities/comment/model/useLikeComment";
+import { useGetUsers } from "../entities/user/model/useGetUsers";
 
 const PostsManager = () => {
   const location = useLocation(); 
@@ -59,31 +67,20 @@ const PostsManager = () => {
   const [showUserModal, setShowUserModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserDetail | null>(null);
   const { updateURL } = useQueryParams(skip, limit, searchQuery, sortBy, sortOrder, selectedTag);
-
-  // 순수함수: posts에 user 정보 추가
-  const mergePostsAndUsers = (posts: Post[], users: User[]) => {
-    return posts.map((post) => ({
-      ...post,
-      author: users.find((user) => user.id === post.userId),
-    }))
-  }
-
-  // 게시물 데이터 가져오기
-  const { data: postsData, isLoading: isPostsLoading } = useQuery({
-    queryKey: ["posts", skip, limit, searchQuery, sortBy, sortOrder, selectedTag],
-    queryFn: async () => {
-      const [postsResponse, usersResponse] = await Promise.all([
-        fetchPostsData(limit, skip),
-        fetchUsersData()
-      ]);
-      return { postsData: postsResponse, usersData: usersResponse };
-    },
-    staleTime: STALE_TIME,
-    gcTime: GC_TIME,
-    retry: 3,
-    refetchOnWindowFocus: false,
-  });
-
+  
+  const { data: postsData, isLoading: isPostsLoading } = usePostsWithUsersQuery(skip, limit, searchQuery, sortBy, sortOrder, selectedTag);
+  const { data: tagsData, isLoading: isTagsLoading } = useGetTagQuery();
+  const { data: searchData, isLoading: isSearchLoading } = useGetSearchQuery(searchQuery);
+  const { data: tagData, isLoading: isTagLoading } = useGetPostsByTag(selectedTag);
+  const addPostMutation = useAddPost(newPost, setPosts, posts, setShowAddDialog, setNewPost);
+  const updatePostMutation = useUpdatePost(selectedPost, setPosts, posts, setShowEditDialog, queryClient);
+  const deletePostMutation = useDeletePost(setPosts, posts, queryClient);
+  const { data: commentsData, isLoading: isCommentsLoading } = useGetComments(selectedPost);
+  const addCommentMutation = useAddComment(newComment, setComments, setShowAddCommentDialog, setNewComment, queryClient);
+  const updateCommentMutation = useUpdateComment(selectedComment, setComments, setShowEditCommentDialog, queryClient);
+  const deleteCommentMutation = useDeleteComment(setComments, queryClient);
+  const likeCommentMutation = useLikeComment(comments, setComments, queryClient);
+  const { data: userData, isLoading: isUserLoading } = useGetUsers(selectedUser);
   // 게시물 데이터 업데이트
   useEffect(() => {
     if (postsData) {
@@ -92,34 +89,13 @@ const PostsManager = () => {
       setTotal(postsData.postsData.total);    
     }
   }, [postsData]);
-
-  // 태그 데이터 가져오기
-  const { data: tagsData, isLoading: isTagsLoading } = useQuery({
-    queryKey: ["tags"],
-    queryFn: fetchTagsData,
-    staleTime: STALE_TIME,
-    gcTime: GC_TIME,
-    retry: 2,
-    refetchOnWindowFocus: false,
-  });
-
+  
   // 태그 데이터 업데이트
   useEffect(() => {
     if (tagsData) {
       setTags(tagsData);
     }
   }, [tagsData]);
-
-  // 검색 결과 가져오기
-  const { data: searchData, isLoading: isSearchLoading } = useQuery({
-    queryKey: ['posts', 'search', searchQuery],
-    queryFn: () => fetchSearchPostsData(searchQuery),
-    enabled: !!searchQuery,
-    staleTime: STALE_TIME,
-    gcTime: GC_TIME,
-    retry: 2,
-    refetchOnWindowFocus: false,
-  });
   
   // 검색 결과가 있으면 게시물 데이터 업데이트
   useEffect(() => {
@@ -129,23 +105,6 @@ const PostsManager = () => {
     }
   }, [searchData]);
 
-  // 태그별 게시물 가져오기
-  const { data: tagData, isLoading: isTagLoading } = useQuery({
-    queryKey: ['posts', 'tag', selectedTag],
-    queryFn: async () => {
-      const [postsResponse, usersResponse] = await Promise.all([
-        fetchPostsByTagData(selectedTag),
-        fetchUsersData()
-      ]);
-      return { postsData: postsResponse, usersData: usersResponse };
-    },
-    enabled: !!selectedTag && selectedTag !== "all",
-    staleTime: STALE_TIME,
-    gcTime: GC_TIME,
-    retry: 2,
-    refetchOnWindowFocus: false,
-  });
-  
   // 데이터가 있으면 상태 업데이트
   useEffect(() => {
     if (tagData) {
@@ -155,131 +114,17 @@ const PostsManager = () => {
     }
   }, [tagData]);
 
-  // 게시물 추가
-  const addPostMutation = useMutation({
-    mutationFn: () => fetchAddPostData(newPost),
-    onSuccess: (data) => {
-      setPosts([data, ...posts]);
-      setShowAddDialog(false);
-      setNewPost({ title: "", body: "", userId: 1 });
-      invalidateQueries(queryClient, ['posts']);
-    },
-    onError: handleError
-  });
-
-  // 게시물 업데이트
-  const updatePostMutation = useMutation({
-    mutationFn: () => fetchUpdatePostData(selectedPost),
-    onSuccess: (data) => {
-      setPosts(posts.map((post) => (post.id === data.id ? data : post)));
-      setShowEditDialog(false);
-      invalidateQueries(queryClient, ['posts']);
-    },
-    onError: handleError
-  });
-
-  // 게시물 삭제
-  const deletePostMutation = useMutation({
-    mutationFn: fetchDeletePostData,
-    onSuccess: (_, id) => {
-      setPosts(posts.filter((post) => post.id !== id));
-      invalidateQueries(queryClient, ['posts']);
-    },
-    onError: handleError
-  });
-
-  const { data: commentsData, isLoading: isCommentsLoading } = useQuery({
-    queryKey: ['comments', selectedPost?.id],
-    queryFn: () => fetchCommentsData(selectedPost?.id || 0),
-    enabled: !!selectedPost?.id,
-    staleTime: STALE_TIME,
-    gcTime: GC_TIME,
-    retry: 2,
-    refetchOnWindowFocus: false,
-  });
-
   useEffect(() => {
     if (commentsData && selectedPost?.id) {
       setComments((prev) => ({ ...prev, [selectedPost.id]: commentsData.comments }));
     }
   }, [commentsData, selectedPost?.id]);
 
-  // 댓글 추가
-  const addCommentMutation = useMutation({
-    mutationFn: () => fetchAddCommentData(newComment),
-    onSuccess: (data) => {
-      setComments((prev) => ({
-        ...prev,
-        [data.postId]: [...(prev[data.postId] || []), data],
-      }));
-      setShowAddCommentDialog(false);
-      setNewComment({ body: "", postId: 0, userId: 1 });
-      invalidateQueries(queryClient, ['comments']);
-    },
-    onError: handleError
-  });
-
-  // 댓글 업데이트
-  const updateCommentMutation = useMutation({
-    mutationFn: () => fetchUpdateCommentData(selectedComment),
-    onSuccess: (data) => {
-      setComments((prev) => ({
-        ...prev,
-        [data.postId]: prev[data.postId].map((comment) => (comment.id === data.id ? data : comment)),
-      }));
-      setShowEditCommentDialog(false);
-      invalidateQueries(queryClient, ['comments']);
-    },
-    onError: handleError
-  });
-
-  // 댓글 삭제
-  const deleteCommentMutation = useMutation({
-    mutationFn: ({ id }: DeleteCommentRequestParams) => fetchDeleteCommentData(id),
-    onSuccess: (_, variables) => {
-      setComments((prev) => ({
-        ...prev,
-        [variables.postId]: prev[variables.postId].filter((comment) => comment.id !== variables.id),
-      }));
-      invalidateQueries(queryClient, ['comments']);
-    },
-    onError: handleError
-  });
-
-  // 댓글 좋아요
-  const likeCommentMutation = useMutation<CommentDetail, Error, PatchLikeCommentRequestBody>({
-    mutationFn: ({ id, postId }) => {
-      const currentLikes = comments[postId]?.find((c) => c.id === id)?.likes || 0;
-      return fetchLikeCommentData(id, currentLikes);
-    },
-    onSuccess: (data, { postId }) => {
-      setComments((prev) => ({
-        ...prev,
-        [postId]: prev[postId].map((comment) =>
-          comment.id === data.id ? { ...data, likes: comment.likes + 1 } : comment,
-        ),
-      }));
-      invalidateQueries(queryClient, ['comments']);
-    },
-    onError: handleError
-  });
-
   // 게시물 상세 보기
   const openPostDetail = (post: Post): void => {
     setSelectedPost(post)
     setShowPostDetailDialog(true)
   }
-  
-  // 사용자 정보 가져오기
-  const { data: userData, isLoading: isUserLoading } = useQuery({
-    queryKey: ['user', selectedUser?.id],
-    queryFn: () => fetchOpenUserModalData(selectedUser),
-    enabled: !!selectedUser?.id,
-    staleTime: STALE_TIME,
-    gcTime: GC_TIME,
-    retry: 2,
-    refetchOnWindowFocus: false,
-  });
 
   useEffect(() => {
     if (userData) {

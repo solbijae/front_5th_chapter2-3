@@ -1,5 +1,5 @@
-import { fetchInstance } from '../shared/api/fetchInstance';
-import { GetUserList, UserDetail } from '../config/user';
+import { fetchInstance } from '../../../shared/api/fetchInstance';
+import { GetUserList, UserDetail } from '../../../config';
 const BASE_URL = "/api/users";
 
 // API: 사용자 데이터 가져오기

@@ -1,5 +1,5 @@
-import { fetchInstance } from '../shared/api/fetchInstance';
-import { GetPostList, GetTag, PostCreateRequestBody, Post, PostUpdateRequestBody } from '../config/post';
+import { fetchInstance } from '../../../shared/api/fetchInstance';
+import { GetPostList, GetTag, PostCreateRequestBody, Post, PostUpdateRequestBody } from '../../../config';
 const BASE_URL = "/api/posts";
 
 // API: 게시물 데이터 가져오기
