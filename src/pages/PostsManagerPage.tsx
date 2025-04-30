@@ -28,6 +28,8 @@ import { Post, User, DeleteCommentRequestParams, PostCreateRequestBody, GetTag, 
 import { fetchPostsData, fetchTagsData, fetchSearchPostsData, fetchPostsByTagData, fetchAddPostData, fetchDeletePostData, fetchUpdatePostData } from "../api/post";
 import { fetchUsersData, fetchOpenUserModalData } from "../api/user";
 import { fetchCommentsData, fetchAddCommentData, fetchUpdateCommentData, fetchDeleteCommentData, fetchLikeCommentData } from "../api/comment";
+import { handleError } from "../shared/lib/queryError";
+import { invalidateQueries } from "../shared/lib/queryInvalidate";
 
 const PostsManager = () => {
   const location = useLocation(); 
@@ -56,21 +58,7 @@ const PostsManager = () => {
   const [showPostDetailDialog, setShowPostDetailDialog] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserDetail | null>(null);
-  const [, setError] = useState<string | null>(null);
   const { updateURL } = useQueryParams(skip, limit, searchQuery, sortBy, sortOrder, selectedTag);
-
-  // 공통 에러 처리
-  const handleError = (error: Error) => {
-    setError(error.message);
-    console.error(error);
-  };
-
-  // 공통 캐시 무효화
-  const invalidateQueries = (queryKeys: string[]) => {
-    queryKeys.forEach(key => {
-      queryClient.invalidateQueries({ queryKey: [key] });
-    });
-  };
 
   // 순수함수: posts에 user 정보 추가
   const mergePostsAndUsers = (posts: Post[], users: User[]) => {
@@ -174,7 +162,7 @@ const PostsManager = () => {
       setPosts([data, ...posts]);
       setShowAddDialog(false);
       setNewPost({ title: "", body: "", userId: 1 });
-      invalidateQueries(['posts']);
+      invalidateQueries(queryClient, ['posts']);
     },
     onError: handleError
   });
@@ -185,7 +173,7 @@ const PostsManager = () => {
     onSuccess: (data) => {
       setPosts(posts.map((post) => (post.id === data.id ? data : post)));
       setShowEditDialog(false);
-      invalidateQueries(['posts']);
+      invalidateQueries(queryClient, ['posts']);
     },
     onError: handleError
   });
@@ -195,7 +183,7 @@ const PostsManager = () => {
     mutationFn: fetchDeletePostData,
     onSuccess: (_, id) => {
       setPosts(posts.filter((post) => post.id !== id));
-      invalidateQueries(['posts']);
+      invalidateQueries(queryClient, ['posts']);
     },
     onError: handleError
   });
@@ -226,7 +214,7 @@ const PostsManager = () => {
       }));
       setShowAddCommentDialog(false);
       setNewComment({ body: "", postId: 0, userId: 1 });
-      invalidateQueries(['comments']);
+      invalidateQueries(queryClient, ['comments']);
     },
     onError: handleError
   });
@@ -240,7 +228,7 @@ const PostsManager = () => {
         [data.postId]: prev[data.postId].map((comment) => (comment.id === data.id ? data : comment)),
       }));
       setShowEditCommentDialog(false);
-      invalidateQueries(['comments']);
+      invalidateQueries(queryClient, ['comments']);
     },
     onError: handleError
   });
@@ -253,7 +241,7 @@ const PostsManager = () => {
         ...prev,
         [variables.postId]: prev[variables.postId].filter((comment) => comment.id !== variables.id),
       }));
-      invalidateQueries(['comments']);
+      invalidateQueries(queryClient, ['comments']);
     },
     onError: handleError
   });
@@ -271,7 +259,7 @@ const PostsManager = () => {
           comment.id === data.id ? { ...data, likes: comment.likes + 1 } : comment,
         ),
       }));
-      invalidateQueries(['comments']);
+      invalidateQueries(queryClient, ['comments']);
     },
     onError: handleError
   });
