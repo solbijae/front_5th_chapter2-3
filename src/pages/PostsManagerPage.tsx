@@ -29,15 +29,10 @@ import { usePostsWithUsersQuery } from "../entities/post/model/useGetPostsWithUs
 import { useGetTagQuery } from "../entities/post/model/useGetTags";
 import { useGetSearchQuery } from "../entities/post/model/useGetPostsBySearch";
 import { useGetPostsByTag } from "../entities/post/model/useGetPostsByTag";
-import { useAddPost } from "../entities/post/model/useAddPost";
-import { useUpdatePost } from "../entities/post/model/useUpdatePost";
-import { useDeletePost } from "../entities/post/model/useDeletePost";
 import { useGetComments } from "../entities/comment/model/useGetComments";
-import { useAddComment } from "../entities/comment/model/useAddComment";
-import { useUpdateComment } from "../entities/comment/model/useUpdateComment";
-import { useDeleteComment } from "../entities/comment/model/useDeleteComment";
-import { useLikeComment } from "../entities/comment/model/useLikeComment";
 import { useGetUsers } from "../entities/user/model/useGetUsers";
+import { parseQueryParams } from "../shared/lib/parseQueryParams";
+import { highlightText } from "../entities/post/ui/highlightText";
 import { usePostHandlers } from "../entities/post/model/usePostHandlers";
 import { useCommentHandlers } from "../entities/comment/model/useCommentHandlers";
 
@@ -74,14 +69,7 @@ const PostsManager = () => {
   const { data: tagsData, isLoading: isTagsLoading } = useGetTagQuery();
   const { data: searchData, isLoading: isSearchLoading } = useGetSearchQuery(searchQuery);
   const { data: tagData, isLoading: isTagLoading } = useGetPostsByTag(selectedTag);
-  const addPostMutation = useAddPost(newPost, setPosts, posts, setShowAddDialog, setNewPost);
-  const updatePostMutation = useUpdatePost(selectedPost, setPosts, posts, setShowEditDialog, queryClient);
-  const deletePostMutation = useDeletePost(setPosts, posts, queryClient);
   const { data: commentsData, isLoading: isCommentsLoading } = useGetComments(selectedPost);
-  const addCommentMutation = useAddComment(newComment, setComments, setShowAddCommentDialog, setNewComment, queryClient);
-  const updateCommentMutation = useUpdateComment(selectedComment, setComments, setShowEditCommentDialog, queryClient);
-  const deleteCommentMutation = useDeleteComment(setComments, queryClient);
-  const likeCommentMutation = useLikeComment(comments, setComments, queryClient);
   const { data: userData, isLoading: isUserLoading } = useGetUsers(selectedUser);
 
   const { addPost, updatePost, deletePost } = usePostHandlers(newPost, setPosts, posts, setShowAddDialog, setNewPost, selectedPost, setShowEditDialog, queryClient);
@@ -145,19 +133,6 @@ const PostsManager = () => {
     updateURL();
   }, [skip, limit, sortBy, sortOrder, selectedTag, updateURL]);
 
-  // 순수함수: URLSearchParams 파싱
-  const parseQueryParams = (search: string) => {
-    const params = new URLSearchParams(search);
-    return {
-      skip: parseInt(params.get("skip") || "0"),
-      limit: parseInt(params.get("limit") || "10"),
-      searchQuery: params.get("search") || "",
-      sortBy: params.get("sortBy") || "",
-      sortOrder: params.get("sortOrder") || "asc",
-      selectedTag: params.get("tag") || "",
-    };
-  };
-
   // URL 업데이트
   useEffect(() => {
     const {
@@ -177,33 +152,13 @@ const PostsManager = () => {
     setSelectedTag(selectedTag);
   }, [location.search]);
 
-  // UI: 하이라이트된 부분을 UI에 렌더링
-  const renderHighlightedText = (parts: string[], highlight: string) => {
-    if (!parts) return null
-    if (!highlight.trim()) {
-      return <span>{parts}</span>
-    }
-
-    const regex = new RegExp(`(${highlight})`, "gi");
-  
-    return parts.map((part, index) =>
-      regex.test(part) ? <mark key={index}>{part}</mark> : <span key={index}>{part}</span>
-    );
-  };
-
-  // UI: 실제 하이라이팅 기능을 수행
-  const highlightText = (text: string, highlight: string) => {
-    if (!text) return null;
-    const parts = splitTextWithHighlight(text, highlight);
-    return <span>{renderHighlightedText(parts, highlight)}</span>;
-  };
   // 로딩 상태 통합
   const isLoading = isPostsLoading || isTagsLoading || isCommentsLoading || isUserLoading || isSearchLoading || isTagLoading;
 
   const handleNewComment = (comment: { body: string; postId: number | null; userId: number }) => {
     setNewComment({ body: comment.body, postId: comment.postId || 0, userId: comment.userId });
   };
-  
+
   return (
     <Card className="w-full max-w-6xl mx-auto">
       <CardHeader>
