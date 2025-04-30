@@ -177,14 +177,6 @@ const PostsManager = () => {
     setSelectedTag(selectedTag);
   }, [location.search]);
 
-  // 순수함수: 하이라이트된 부분 찾기
-  const splitTextWithHighlight = (text: string, highlight: string) => {
-    if (!highlight.trim()) return [text];
-    
-    const regex = new RegExp(`(${highlight})`, "gi");
-    return text.split(regex);
-  };
-
   // UI: 하이라이트된 부분을 UI에 렌더링
   const renderHighlightedText = (parts: string[], highlight: string) => {
     if (!parts) return null
