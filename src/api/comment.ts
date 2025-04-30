@@ -1,4 +1,4 @@
-import { fetchInstance } from '../lib/fetchInstance';
+import { fetchInstance } from '../shared/api/fetchInstance';
 import { GetComment, CommentDetail, PostCreateCommentRequestBody, PutUpdateCommentRequestBody } from '../config';
 const BASE_URL = "/api/comments";
 

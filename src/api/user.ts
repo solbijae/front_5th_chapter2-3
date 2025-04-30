@@ -1,4 +1,4 @@
-import { fetchInstance } from '../lib/fetchInstance';
+import { fetchInstance } from '../shared/api/fetchInstance';
 import { GetUserList, UserDetail } from '../config/user';
 const BASE_URL = "/api/users";
 

@@ -1,4 +1,4 @@
-import { fetchInstance } from '../lib/fetchInstance';
+import { fetchInstance } from '../shared/api/fetchInstance';
 import { GetPostList, GetTag, PostCreateRequestBody, Post, PostUpdateRequestBody } from '../config/post';
 const BASE_URL = "/api/posts";
 
