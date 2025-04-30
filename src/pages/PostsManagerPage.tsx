@@ -38,6 +38,8 @@ import { useUpdateComment } from "../entities/comment/model/useUpdateComment";
 import { useDeleteComment } from "../entities/comment/model/useDeleteComment";
 import { useLikeComment } from "../entities/comment/model/useLikeComment";
 import { useGetUsers } from "../entities/user/model/useGetUsers";
+import { usePostHandlers } from "../entities/post/model/usePostHandlers";
+import { useCommentHandlers } from "../entities/comment/model/useCommentHandlers";
 
 const PostsManager = () => {
   const location = useLocation(); 
@@ -81,6 +83,11 @@ const PostsManager = () => {
   const deleteCommentMutation = useDeleteComment(setComments, queryClient);
   const likeCommentMutation = useLikeComment(comments, setComments, queryClient);
   const { data: userData, isLoading: isUserLoading } = useGetUsers(selectedUser);
+
+  const { addPost, updatePost, deletePost } = usePostHandlers(newPost, setPosts, posts, setShowAddDialog, setNewPost, selectedPost, setShowEditDialog, queryClient);
+
+  const { addComment, updateComment, deleteComment, likeComment } = useCommentHandlers(newComment, setComments, comments, setShowAddCommentDialog, setNewComment, selectedComment, setShowEditCommentDialog, queryClient);
+
   // 게시물 데이터 업데이트
   useEffect(() => {
     if (postsData) {
@@ -198,42 +205,6 @@ const PostsManager = () => {
     const parts = splitTextWithHighlight(text, highlight);
     return <span>{renderHighlightedText(parts, highlight)}</span>;
   };
-
-  // 게시물 추가
-  const addPost = () => {
-    addPostMutation.mutate();
-  };
-
-  // 게시물 업데이트
-  const updatePost = () => {
-    updatePostMutation.mutate();
-  };
-
-  // 게시물 삭제
-  const deletePost = (id: number) => {
-    deletePostMutation.mutate(id);
-  };
-
-  // 댓글 추가
-  const addComment = () => {
-    addCommentMutation.mutate();
-  };
-
-  // 댓글 업데이트
-  const updateComment = () => {
-    updateCommentMutation.mutate();
-  };
-
-  // 댓글 삭제
-  const deleteComment = (id: number, postId: number) => {
-    deleteCommentMutation.mutate({ id, postId });
-  };
-
-  // 댓글 좋아요
-  const likeComment = (id: number, postId: number) => {
-    likeCommentMutation.mutate({ id, postId });
-  };
-
   // 로딩 상태 통합
   const isLoading = isPostsLoading || isTagsLoading || isCommentsLoading || isUserLoading || isSearchLoading || isTagLoading;
 
