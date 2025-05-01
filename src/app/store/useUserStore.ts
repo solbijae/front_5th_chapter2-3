@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { UserDetail } from '../../config';
+import { UserDetail } from '@/entities/user/config/user';
 
 interface UserState {
   selectedUser: UserDetail | null;

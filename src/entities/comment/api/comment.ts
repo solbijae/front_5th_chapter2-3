@@ -1,5 +1,5 @@
-import { fetchInstance } from '../../../shared/api/fetchInstance';
-import { GetComment, CommentDetail, PostCreateCommentRequestBody, PutUpdateCommentRequestBody } from '../../../config';
+import { fetchInstance } from '@/shared/api/fetchInstance';
+import { GetComment, CommentDetail, PostCreateCommentRequestBody, PutUpdateCommentRequestBody } from '../config/comment';
 const BASE_URL = "/api/comments";
 
 // API: 댓글 가져오기
