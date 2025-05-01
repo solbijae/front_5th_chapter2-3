@@ -40,7 +40,7 @@ export const PostsCardContent: React.FC<PostsCardContentProps> = ({
                 className="pl-8"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyPress={(e) => e.key === "Enter" && setSearchQuery(e.currentTarget.value)}
+                onKeyDown={(e) => e.key === "Enter" && setSearchQuery(e.currentTarget.value)}
               />
             </div>
           </div>
