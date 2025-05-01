@@ -10,60 +10,31 @@ import {
 } from "../../shared/ui";
 import { Search } from "lucide-react";
 import { PostTable } from "./Table";
-import { Dispatch, SetStateAction, JSX } from "react";
-import { Post, GetTag, UserDetail } from "../../config";
+import { JSX } from "react";
+import { Post } from "../../config";
+import { usePostsStore } from "../../app/store/usePostsStore";
+import { useFilterStore } from "../../app/store/useFilterStore";
+import { useLoadingStore } from "../../app/store/useLoadingStore";
 
 interface PostsCardContentProps {
-  posts: Post[];
-  searchQuery: string;
-  setSearchQuery: (query: string) => void;
-  selectedTag: string;
-  setSelectedTag: Dispatch<SetStateAction<string>>;
   updateURL: () => void;
-  tags: GetTag[];
-  sortBy: string;
-  setSortBy: (sortBy: string) => void;
-  sortOrder: string;
-  setSortOrder: (sortOrder: string) => void;
-  skip: number;
-  limit: number;
-  setLimit: (limit: number) => void;
-  setSkip: (skip: number) => void;
-  total: number;
-  setSelectedPost: (post: Post) => void;
   setShowEditDialog: (showEditDialog: boolean) => void;
   highlightText: (text: string, highlight: string) => JSX.Element | null;
-  isLoading: boolean;
-  setSelectedUser: Dispatch<SetStateAction<UserDetail | null>>;
   openPostDetail: (post: Post) => void;
   deletePost: (postId: number) => void;
 }
 
 export const PostsCardContent: React.FC<PostsCardContentProps> = ({
-  posts,
-  searchQuery,
-  setSearchQuery,
-  selectedTag,
-  setSelectedTag,
   updateURL,
-  tags,
-  sortBy,
-  setSortBy,
-  sortOrder,
-  setSortOrder,
-  skip,
-  limit,
-  setLimit,
-  setSkip,
-  total,
-  setSelectedPost,
   setShowEditDialog,
   highlightText,
-  isLoading,
-  setSelectedUser,
   openPostDetail,
   deletePost,
 }) => {
+  const { searchQuery, setSearchQuery, sortBy, setSortBy, sortOrder, setSortOrder, selectedTag, setSelectedTag, } = useFilterStore();
+  const { total, skip, limit, setLimit, setSkip, setSelectedPost, tags } = usePostsStore();
+  const { isLoading } = useLoadingStore();
+
   return (
     <CardContent>
       <div className="flex flex-col gap-4">
@@ -127,12 +98,8 @@ export const PostsCardContent: React.FC<PostsCardContentProps> = ({
           <div className="flex justify-center p-4">로딩 중...</div>
         ) : (
           <PostTable
-            posts={posts}
             searchQuery={searchQuery}
-            selectedTag={selectedTag}
-            setSelectedTag={setSelectedTag}
             updateURL={updateURL}
-            openUserModal={setSelectedUser}
             openPostDetail={openPostDetail}
             deletePost={deletePost}
             setSelectedPost={setSelectedPost}

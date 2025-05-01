@@ -1,15 +1,14 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../../shared/ui";
 import { Comments } from "../../../features/ui/Comments";
-import { CommentDetail, Post, PostCreateCommentRequestBody } from "../../../config";
+import { CommentDetail, PostCreateCommentRequestBody } from "../../../config";
 import { JSX, Dispatch, SetStateAction } from "react";
+import { usePostsStore } from "../../../app/store/usePostsStore";
+import { useFilterStore } from "../../../app/store/useFilterStore";
 
 interface GetPostDialogProps {
   comments: Record<number, CommentDetail[]>;
   showPostDetailDialog: boolean;
   setShowPostDetailDialog: (showPostDetailDialog: boolean) => void;
-  selectedPost: Post | null;
-  setSelectedPost: (selectedPost: Post | null) => void;
-  searchQuery: string;
   highlightText: (text: string, query: string) => JSX.Element | null;
   setShowAddCommentDialog: (showAddCommentDialog: boolean) => void;
   setSelectedComment: (selectedComment: CommentDetail | null) => void;
@@ -23,8 +22,6 @@ export const GetPostDialog: React.FC<GetPostDialogProps> = ({
   comments,
   showPostDetailDialog,
   setShowPostDetailDialog,
-  selectedPost,
-  searchQuery,
   highlightText,
   setShowAddCommentDialog,
   setSelectedComment,
@@ -33,6 +30,8 @@ export const GetPostDialog: React.FC<GetPostDialogProps> = ({
   likeComment,
   setNewComment,
 }) => {
+  const { selectedPost } = usePostsStore();
+  const { searchQuery } = useFilterStore();
   const handleNewComment = (comment: { body: string; postId: number | null; userId: number }) => {
     setNewComment({ body: comment.body, postId: comment.postId || 0, userId: comment.userId });
   };

@@ -9,38 +9,38 @@ import {
   TableRow,
 } from "../../shared/ui";
 import { Post, UserDetail } from "../../config";
-import { Dispatch, SetStateAction } from "react";
+import { usePostsStore } from "../../app/store/usePostsStore";
+import { useFilterStore } from "../../app/store/useFilterStore";
+import { useUserStore } from "../../app/store/useUserStore";
 
 interface PostTableProps {
-  posts: Post[]
   searchQuery: string
-  selectedTag: string
-  setSelectedTag: Dispatch<SetStateAction<string>>
   updateURL: () => void
   deletePost: (id: number) => void
   setSelectedPost: (post: Post) => void
   setShowEditDialog: (show: boolean) => void
   highlightText: (text: string, query: string) => React.ReactNode
-  openUserModal: Dispatch<SetStateAction<UserDetail | null>>;
   openPostDetail: (post: Post) => void
 }
 
 export const PostTable = ({
-  posts,
   searchQuery,
-  selectedTag,
-  setSelectedTag,
   updateURL,
   deletePost,
   setSelectedPost,
   setShowEditDialog,
   highlightText,
-  openUserModal,
+  // openUserModal,
   openPostDetail,
-}: PostTableProps) => (
-  <Table>
-    <TableHeader>
-      <TableRow>
+}: PostTableProps) => {
+  const { posts } = usePostsStore();
+  const { selectedTag, setSelectedTag } = useFilterStore();
+  const { setSelectedUser } = useUserStore();
+
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
         <TableHead className="w-[50px]">ID</TableHead>
         <TableHead>제목</TableHead>
         <TableHead className="w-[150px]">작성자</TableHead>
@@ -79,7 +79,7 @@ export const PostTable = ({
           <TableCell>
             <div 
               className="flex items-center space-x-2 cursor-pointer"               
-              onClick={() => post.author && openUserModal(post.author as UserDetail)}
+              onClick={() => post.author && setSelectedUser(post.author as UserDetail)}
             >
               <img src={post.author?.image} alt={post.author?.username} className="w-8 h-8 rounded-full" />
               <span>{post.author?.username}</span>
@@ -116,5 +116,6 @@ export const PostTable = ({
         </TableRow>
       ))}
     </TableBody>
-  </Table>
-)
+    </Table>
+  );
+};

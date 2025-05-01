@@ -1,20 +1,17 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, Input, Textarea, Button } from "../../../shared/ui";
-import { Post } from "../../../config";
-
+import { usePostsStore } from "../../../app/store/usePostsStore";
 interface UpdatePostDialogProps {
   showEditDialog: boolean;
   setShowEditDialog: (showEditDialog: boolean) => void;
-  selectedPost: Post | null;
-  setSelectedPost: (selectedPost: Post | null) => void;
   updatePost: () => void;
 }
 export const UpdatePostDialog: React.FC<UpdatePostDialogProps> = ({
   showEditDialog,
   setShowEditDialog,
-  selectedPost,
-  setSelectedPost,
   updatePost,
 }: UpdatePostDialogProps) => {
+  const { selectedPost, setSelectedPost } = usePostsStore();
+  
   return (
     <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
       <DialogContent>

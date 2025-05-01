@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 import { Card } from "../shared/ui";
 import { useQueryClient } from "@tanstack/react-query";
 import { useQueryParams } from "../hooks/useQueryParams";
-import { Post, PostCreateRequestBody, GetTag, CommentDetail, PostCreateCommentRequestBody, UserDetail } from "../config";
+import { Post, PostCreateRequestBody, CommentDetail, PostCreateCommentRequestBody } from "../config";
 import { mergePostsAndUsers } from "../entities/post/lib/mergePostsAndUsers";
 import { usePostsWithUsersQuery } from "../entities/post/model/useGetPostsWithUsers";
 import { useGetTagQuery } from "../entities/post/model/useGetTags";
@@ -23,26 +23,22 @@ import { GetPostDialog } from "../entities/post/ui/GetPostDialog";
 import { GetUserDialog } from "../entities/user/ui/GetUserDialog";
 import { PostsCardTitle } from "../features/ui/PostCardTitle";
 import { PostsCardContent } from "../features/ui/PostCardContent";
-
+import { useLoadingStore } from "../app/store/useLoadingStore";
+import { usePostsStore } from "../app/store/usePostsStore";
+import { useFilterStore } from "../app/store/useFilterStore";
+import { useUserStore } from "../app/store/useUserStore";
 const PostsManager = () => {
   const location = useLocation(); 
-  const queryParams = new URLSearchParams(location.search);
   const queryClient = useQueryClient();
 
   // 상태 관리
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [total, setTotal] = useState(0);
-  const [skip, setSkip] = useState(parseInt(queryParams.get("skip") || "0"));
-  const [limit, setLimit] = useState(parseInt(queryParams.get("limit") || "10"));
-  const [searchQuery, setSearchQuery] = useState(queryParams.get("search") || "");
-  const [selectedPost, setSelectedPost] = useState<Post | null>(null);
-  const [sortBy, setSortBy] = useState(queryParams.get("sortBy") || "");
-  const [sortOrder, setSortOrder] = useState(queryParams.get("sortOrder") || "asc");
+  const { posts, setPosts, setTotal, skip, setSkip, limit, setLimit, selectedPost, setSelectedPost, setTags } = usePostsStore();
+  const { selectedUser, setSelectedUser } = useUserStore();
+  const { searchQuery, setSearchQuery, sortBy, setSortBy, sortOrder, setSortOrder, selectedTag, setSelectedTag } = useFilterStore();
+  const { setIsLoading } = useLoadingStore();
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [newPost, setNewPost] = useState<PostCreateRequestBody>({ title: "", body: "", userId: 1 });
-  const [tags, setTags] = useState<GetTag[]>([]);
-  const [selectedTag, setSelectedTag] = useState(queryParams.get("tag") || "");
   const [comments, setComments] = useState<Record<number, CommentDetail[]>>({});
   const [selectedComment, setSelectedComment] = useState<CommentDetail | null>(null);
   const [newComment, setNewComment] = useState<PostCreateCommentRequestBody>({ body: "", postId: 0, userId: 1 });
@@ -50,7 +46,6 @@ const PostsManager = () => {
   const [showEditCommentDialog, setShowEditCommentDialog] = useState(false);
   const [showPostDetailDialog, setShowPostDetailDialog] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<UserDetail | null>(null);
   const { updateURL } = useQueryParams(skip, limit, searchQuery, sortBy, sortOrder, selectedTag);
   
   const { data: postsData, isLoading: isPostsLoading } = usePostsWithUsersQuery(skip, limit, searchQuery, sortBy, sortOrder, selectedTag);
@@ -71,14 +66,14 @@ const PostsManager = () => {
       setPosts(postsWithUsers);
       setTotal(postsData.postsData.total);    
     }
-  }, [postsData]);
+  }, [postsData, setPosts, setTotal]);
   
   // 태그 데이터 업데이트
   useEffect(() => {
     if (tagsData) {
       setTags(tagsData);
     }
-  }, [tagsData]);
+  }, [tagsData, setTags]);
   
   // 검색 결과가 있으면 게시물 데이터 업데이트
   useEffect(() => {
@@ -86,7 +81,7 @@ const PostsManager = () => {
       setPosts(searchData.posts);
       setTotal(searchData.total);
     }
-  }, [searchData]);
+  }, [searchData, setPosts, setTotal]);
 
   // 데이터가 있으면 상태 업데이트
   useEffect(() => {
@@ -95,7 +90,7 @@ const PostsManager = () => {
       setPosts(postsWithUsers);
       setTotal(tagData.postsData.total);
     }
-  }, [tagData]);
+  }, [tagData, setPosts, setTotal]);
 
   useEffect(() => {
     if (commentsData && selectedPost?.id) {
@@ -114,7 +109,7 @@ const PostsManager = () => {
       setSelectedUser(userData);
       setShowUserModal(true);
     }
-  }, [userData]);
+  }, [userData, setSelectedUser, setShowUserModal]);
 
   // URL 업데이트
   useEffect(() => {
@@ -138,36 +133,20 @@ const PostsManager = () => {
     setSortBy(sortBy);
     setSortOrder(sortOrder);
     setSelectedTag(selectedTag);
-  }, [location.search]);
+  }, [location.search, setSkip, setLimit, setSearchQuery, setSortBy, setSortOrder, setSelectedTag]);
 
   // 로딩 상태 통합
-  const isLoading = isPostsLoading || isTagsLoading || isCommentsLoading || isUserLoading || isSearchLoading || isTagLoading;
+  useEffect(() => {
+    setIsLoading(isPostsLoading || isTagsLoading || isCommentsLoading || isUserLoading || isSearchLoading || isTagLoading);
+  }, [isPostsLoading, isTagsLoading, isCommentsLoading, isUserLoading, isSearchLoading, isTagLoading, setIsLoading]);
 
   return (
     <Card className="w-full max-w-6xl mx-auto">
       <PostsCardTitle setShowAddDialog={setShowAddDialog} />
       <PostsCardContent
-        posts={posts}
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        selectedTag={selectedTag}
-        setSelectedTag={setSelectedTag}
         updateURL={updateURL}
-        tags={tags}
-        sortBy={sortBy}
-        setSortBy={setSortBy}
-        sortOrder={sortOrder}
-        setSortOrder={setSortOrder}
-        skip={skip}
-        limit={limit}
-        setLimit={setLimit}
-        setSkip={setSkip}
-        total={total}
-        setSelectedPost={setSelectedPost}
         setShowEditDialog={setShowEditDialog}
         highlightText={highlightText}
-        isLoading={isLoading}
-        setSelectedUser={setSelectedUser}
         openPostDetail={openPostDetail}
         deletePost={deletePost}
       />
@@ -183,8 +162,6 @@ const PostsManager = () => {
       <UpdatePostDialog
         showEditDialog={showEditDialog}
         setShowEditDialog={setShowEditDialog}
-        selectedPost={selectedPost}
-        setSelectedPost={setSelectedPost}
         updatePost={updatePost}
       />
 
@@ -208,9 +185,6 @@ const PostsManager = () => {
         comments={comments}
         showPostDetailDialog={showPostDetailDialog}
         setShowPostDetailDialog={setShowPostDetailDialog}
-        selectedPost={selectedPost}
-        setSelectedPost={setSelectedPost}
-        searchQuery={searchQuery}
         highlightText={highlightText}
         setShowAddCommentDialog={setShowAddCommentDialog}
         setSelectedComment={setSelectedComment}
