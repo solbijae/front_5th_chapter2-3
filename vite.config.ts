@@ -15,6 +15,11 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    outDir: "dist",
+    emptyOutDir: true,
+    sourcemap: true
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
