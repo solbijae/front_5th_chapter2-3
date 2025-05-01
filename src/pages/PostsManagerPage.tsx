@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { Card } from "../shared/ui";
 import { useQueryClient } from "@tanstack/react-query";
+import { Card } from "../shared/ui";
 import { useQueryParams } from "../hooks/useQueryParams";
 import { Post, PostCreateRequestBody, CommentDetail, PostCreateCommentRequestBody } from "../config";
 import { mergePostsAndUsers } from "../entities/post/lib/mergePostsAndUsers";
@@ -27,6 +27,7 @@ import { useLoadingStore } from "../app/store/useLoadingStore";
 import { usePostsStore } from "../app/store/usePostsStore";
 import { useFilterStore } from "../app/store/useFilterStore";
 import { useUserStore } from "../app/store/useUserStore";
+
 const PostsManager = () => {
   const location = useLocation(); 
   const queryClient = useQueryClient();
@@ -36,6 +37,9 @@ const PostsManager = () => {
   const { selectedUser, setSelectedUser } = useUserStore();
   const { searchQuery, setSearchQuery, sortBy, setSortBy, sortOrder, setSortOrder, selectedTag, setSelectedTag } = useFilterStore();
   const { setIsLoading } = useLoadingStore();
+  const { updateURL } = useQueryParams(skip, limit, searchQuery, sortBy, sortOrder, selectedTag);
+  
+  // 로컬 상태
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [newPost, setNewPost] = useState<PostCreateRequestBody>({ title: "", body: "", userId: 1 });
@@ -46,8 +50,8 @@ const PostsManager = () => {
   const [showEditCommentDialog, setShowEditCommentDialog] = useState(false);
   const [showPostDetailDialog, setShowPostDetailDialog] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
-  const { updateURL } = useQueryParams(skip, limit, searchQuery, sortBy, sortOrder, selectedTag);
-  
+
+  // 데이터 fetching
   const { data: postsData, isLoading: isPostsLoading } = usePostsWithUsersQuery(skip, limit, searchQuery, sortBy, sortOrder, selectedTag);
   const { data: tagsData, isLoading: isTagsLoading } = useGetTagQuery();
   const { data: searchData, isLoading: isSearchLoading } = useGetSearchQuery(searchQuery);
@@ -55,68 +59,58 @@ const PostsManager = () => {
   const { data: commentsData, isLoading: isCommentsLoading } = useGetComments(selectedPost);
   const { data: userData, isLoading: isUserLoading } = useGetUsers(selectedUser);
 
+  // 핸들러
   const { addPost, updatePost, deletePost } = usePostHandlers(newPost, setPosts, posts, setShowAddDialog, setNewPost, selectedPost, setShowEditDialog, queryClient);
-
   const { addComment, updateComment, deleteComment, likeComment } = useCommentHandlers(newComment, setComments, comments, setShowAddCommentDialog, setNewComment, selectedComment, setShowEditCommentDialog, queryClient);
 
   // 게시물 데이터 업데이트
   useEffect(() => {
-    if (postsData) {
-      const postsWithUsers = mergePostsAndUsers(postsData.postsData.posts, postsData.usersData.users);
-      setPosts(postsWithUsers);
-      setTotal(postsData.postsData.total);    
-    }
+    if (!postsData) return;
+    const postsWithUsers = mergePostsAndUsers(postsData.postsData.posts, postsData.usersData.users);
+    setPosts(postsWithUsers);
+    setTotal(postsData.postsData.total);    
   }, [postsData, setPosts, setTotal]);
   
   // 태그 데이터 업데이트
   useEffect(() => {
-    if (tagsData) {
-      setTags(tagsData);
-    }
+    if (!tagsData) return;
+    setTags(tagsData);
   }, [tagsData, setTags]);
   
-  // 검색 결과가 있으면 게시물 데이터 업데이트
+  // 검색 결과 업데이트
   useEffect(() => {
-    if (searchData) {
-      setPosts(searchData.posts);
-      setTotal(searchData.total);
-    }
+    if (!searchData) return;
+    setPosts(searchData.posts);
+    setTotal(searchData.total);
   }, [searchData, setPosts, setTotal]);
 
-  // 데이터가 있으면 상태 업데이트
+  // 태그별 게시물 업데이트
   useEffect(() => {
-    if (tagData) {
-      const postsWithUsers = mergePostsAndUsers(tagData.postsData.posts, tagData.usersData.users);
-      setPosts(postsWithUsers);
-      setTotal(tagData.postsData.total);
-    }
+    if (!tagData) return;
+    const postsWithUsers = mergePostsAndUsers(tagData.postsData.posts, tagData.usersData.users);
+    setPosts(postsWithUsers);
+    setTotal(tagData.postsData.total);
   }, [tagData, setPosts, setTotal]);
 
+  // 댓글 데이터 업데이트
   useEffect(() => {
-    if (commentsData && selectedPost?.id) {
-      setComments((prev) => ({ ...prev, [selectedPost.id]: commentsData.comments }));
-    }
-  }, [commentsData, selectedPost?.id]);
+    if (!commentsData || !selectedPost?.id) return;
+    setComments((prev) => ({ ...prev, [selectedPost.id]: commentsData.comments }));
+  }, [commentsData, selectedPost?.id, setComments]);
 
-  // 게시물 상세 보기
-  const openPostDetail = (post: Post): void => {
-    setSelectedPost(post)
-    setShowPostDetailDialog(true)
-  }
-
+  // 사용자 데이터 업데이트
   useEffect(() => {
-    if (userData) {
-      setSelectedUser(userData);
-      setShowUserModal(true);
-    }
+    if (!userData) return;
+    setSelectedUser(userData);
+    setShowUserModal(true);
   }, [userData, setSelectedUser, setShowUserModal]);
 
-  // URL 업데이트
+  // URL 파라미터 업데이트
   useEffect(() => {
     updateURL();
   }, [skip, limit, sortBy, sortOrder, selectedTag, updateURL]);
 
-  // URL 업데이트
+  // URL 파라미터 파싱
   useEffect(() => {
     const {
       skip,
@@ -135,10 +129,16 @@ const PostsManager = () => {
     setSelectedTag(selectedTag);
   }, [location.search, setSkip, setLimit, setSearchQuery, setSortBy, setSortOrder, setSelectedTag]);
 
-  // 로딩 상태 통합
+  // 로딩 상태 업데이트
   useEffect(() => {
     setIsLoading(isPostsLoading || isTagsLoading || isCommentsLoading || isUserLoading || isSearchLoading || isTagLoading);
   }, [isPostsLoading, isTagsLoading, isCommentsLoading, isUserLoading, isSearchLoading, isTagLoading, setIsLoading]);
+
+  // 게시물 상세 보기
+  const openPostDetail = (post: Post): void => {
+    setSelectedPost(post)
+    setShowPostDetailDialog(true)
+  }
 
   return (
     <Card className="w-full max-w-6xl mx-auto">
