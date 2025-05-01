@@ -15,7 +15,7 @@ export const useCommentHandlers = (
   queryClient: QueryClient
 ) => {
   const addCommentMutation = useAddComment(newComment, setComments, setShowAddCommentDialog, setNewComment, queryClient);
-  const updateCommentMutation = useUpdateComment(selectedComment, setComments, setShowEditCommentDialog, queryClient);
+  const updateCommentMutation = useUpdateComment(selectedComment, comments, setComments, setShowEditCommentDialog, queryClient);
   const deleteCommentMutation = useDeleteComment(setComments, queryClient);
   const likeCommentMutation = useLikeComment(comments, setComments, queryClient);
 

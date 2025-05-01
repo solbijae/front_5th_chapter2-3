@@ -17,12 +17,12 @@ export const useLikeComment = (
       return fetchLikeCommentData(id, currentLikes);
     },
     onSuccess: (data, { postId }) => {
-      const currentComments = queryClient.getQueryData<Record<number, CommentDetail[]>>(['comments']) || {};
+      const currentComments = comments || {};
       const updatedComments: Record<number, CommentDetail[]> = {
         ...currentComments,
-        [postId]: currentComments[postId].map((comment: CommentDetail) =>
+        [postId]: currentComments[postId]?.map((comment: CommentDetail) =>
           comment.id === data.id ? { ...data, likes: comment.likes + 1 } : comment,
-        ),
+        ) || [],
       };
       setComments(updatedComments);
       invalidateQueries(queryClient, ['comments']);
