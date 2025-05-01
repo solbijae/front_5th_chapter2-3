@@ -1,19 +1,19 @@
-import { create } from 'zustand';
-import { Post, GetTag } from '../../config';
+import { create } from "zustand"
+import { Post, GetTag } from "@/entities/post/config/post"
 
 interface PostsState {
-  posts: Post[];
-  total: number;
-  skip: number;
-  limit: number;
-  selectedPost: Post | null;
-  tags: GetTag[];
-  setPosts: (posts: Post[]) => void;
-  setTotal: (total: number) => void;
-  setSkip: (skip: number) => void;
-  setLimit: (limit: number) => void;
-  setSelectedPost: (selectedPost: Post | null) => void;
-  setTags: (tags: GetTag[]) => void;
+  posts: Post[]
+  total: number
+  skip: number
+  limit: number
+  selectedPost: Post | null
+  tags: GetTag[]
+  setPosts: (posts: Post[]) => void
+  setTotal: (total: number) => void
+  setSkip: (skip: number) => void
+  setLimit: (limit: number) => void
+  setSelectedPost: (selectedPost: Post | null) => void
+  setTags: (tags: GetTag[]) => void
 }
 
 export const usePostsStore = create<PostsState>((set) => ({
@@ -29,4 +29,4 @@ export const usePostsStore = create<PostsState>((set) => ({
   setLimit: (limit) => set({ limit }),
   setSelectedPost: (selectedPost) => set({ selectedPost }),
   setTags: (tags) => set({ tags }),
-}));
+}))

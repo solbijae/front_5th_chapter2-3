@@ -1,27 +1,18 @@
-import {
-  Button,
-  CardContent,
-  Input,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/shared/ui";
-import { Search } from "lucide-react";
-import { PostTable } from "@/entities/post/ui/Table";
-import { JSX } from "react";
-import { Post } from "@/entities/post/config/post";
-import { usePostsStore } from "@/app/store/usePostsStore";
-import { useFilterStore } from "@/app/store/useFilterStore";
-import { useLoadingStore } from "@/app/store/useLoadingStore";
+import { Button, CardContent, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui"
+import { Search } from "lucide-react"
+import { PostTable } from "@/entities/post/ui/Table"
+import { JSX } from "react"
+import { Post } from "@/entities/post/config/post"
+import { usePostsStore } from "@/app/store/usePostsStore"
+import { useFilterStore } from "@/app/store/useFilterStore"
+import { useLoadingStore } from "@/app/store/useLoadingStore"
 
 interface PostsCardContentProps {
-  updateURL: () => void;
-  setShowEditDialog: (showEditDialog: boolean) => void;
-  highlightText: (text: string, highlight: string) => JSX.Element | null;
-  openPostDetail: (post: Post) => void;
-  deletePost: (postId: number) => void;
+  updateURL: () => void
+  setShowEditDialog: (showEditDialog: boolean) => void
+  highlightText: (text: string, highlight: string) => JSX.Element | null
+  openPostDetail: (post: Post) => void
+  deletePost: (postId: number) => void
 }
 
 export const PostsCardContent: React.FC<PostsCardContentProps> = ({
@@ -31,9 +22,10 @@ export const PostsCardContent: React.FC<PostsCardContentProps> = ({
   openPostDetail,
   deletePost,
 }) => {
-  const { searchQuery, setSearchQuery, sortBy, setSortBy, sortOrder, setSortOrder, selectedTag, setSelectedTag, } = useFilterStore();
-  const { total, skip, limit, setLimit, setSkip, setSelectedPost, tags } = usePostsStore();
-  const { isLoading } = useLoadingStore();
+  const { searchQuery, setSearchQuery, sortBy, setSortBy, sortOrder, setSortOrder, selectedTag, setSelectedTag } =
+    useFilterStore()
+  const { total, skip, limit, setLimit, setSkip, setSelectedPost, tags } = usePostsStore()
+  const { isLoading } = useLoadingStore()
 
   return (
     <CardContent>

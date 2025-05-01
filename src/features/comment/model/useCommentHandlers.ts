@@ -1,9 +1,10 @@
-import { useAddComment } from "@/features/comment/model/useAddComment";
-import { useUpdateComment } from "@/features/comment/model/useUpdateComment";
-import { useDeleteComment } from "@/features/comment/model/useDeleteComment";
-import { useLikeComment } from "@/features/comment/model/useLikeComment";
-import { QueryClient } from "@tanstack/react-query";
-import { PostCreateCommentRequestBody, CommentDetail } from "@/entities/comment/config/comment";
+import React from "react"
+import { useAddComment } from "@/features/comment/model/useAddComment"
+import { useUpdateComment } from "@/features/comment/model/useUpdateComment"
+import { useDeleteComment } from "@/features/comment/model/useDeleteComment"
+import { useLikeComment } from "@/features/comment/model/useLikeComment"
+import { QueryClient } from "@tanstack/react-query"
+import { PostCreateCommentRequestBody, CommentDetail } from "@/entities/comment/config/comment"
 export const useCommentHandlers = (
   newComment: PostCreateCommentRequestBody,
   setComments: (comments: Record<number, CommentDetail[]>) => void,
@@ -11,33 +12,46 @@ export const useCommentHandlers = (
   setShowAddCommentDialog: (showAddCommentDialog: boolean) => void,
   setNewComment: (newComment: PostCreateCommentRequestBody) => void,
   selectedComment: CommentDetail | null,
-  setShowEditCommentDialog: (showEditCommentDialog: boolean) => void,
-  queryClient: QueryClient
+  setShowEditCommentDialog: React.Dispatch<React.SetStateAction<boolean>>,
+  queryClient: QueryClient,
 ) => {
-  const addCommentMutation = useAddComment(newComment, setComments, setShowAddCommentDialog, setNewComment, queryClient);
-  const updateCommentMutation = useUpdateComment(selectedComment, comments, setComments, setShowEditCommentDialog, queryClient);
-  const deleteCommentMutation = useDeleteComment(setComments, queryClient);
-  const likeCommentMutation = useLikeComment(comments, setComments, queryClient);
+  const addCommentMutation = useAddComment(
+    newComment,
+    comments,
+    setComments,
+    setShowAddCommentDialog,
+    setNewComment,
+    queryClient,
+  )
+  const updateCommentMutation = useUpdateComment(
+    selectedComment,
+    comments,
+    setComments,
+    setShowEditCommentDialog,
+    queryClient,
+  )
+  const deleteCommentMutation = useDeleteComment(comments, setComments, queryClient)
+  const likeCommentMutation = useLikeComment(comments, setComments, queryClient)
 
   // 댓글 추가
   const addComment = () => {
-    addCommentMutation.mutate();
-  };
+    addCommentMutation.mutate()
+  }
 
   // 댓글 업데이트
   const updateComment = () => {
-    updateCommentMutation.mutate();
-  };
+    updateCommentMutation.mutate()
+  }
 
   // 댓글 삭제
   const deleteComment = (id: number, postId: number) => {
-    deleteCommentMutation.mutate({ id, postId });
-  };
+    deleteCommentMutation.mutate({ id, postId })
+  }
 
   // 댓글 좋아요
   const likeComment = (id: number, postId: number) => {
-    likeCommentMutation.mutate({ id, postId });
-  };
+    likeCommentMutation.mutate({ id, postId })
+  }
 
-  return { addComment, updateComment, deleteComment, likeComment };
+  return { addComment, updateComment, deleteComment, likeComment }
 }

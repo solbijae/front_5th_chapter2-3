@@ -1,14 +1,14 @@
-import { create } from 'zustand';
+import { create } from "zustand"
 
 interface FilterState {
-  searchQuery: string;
-  sortBy: string;
-  sortOrder: string;
-  selectedTag: string;
-  setSearchQuery: (searchQuery: string) => void;
-  setSortBy: (sortBy: string) => void;
-  setSortOrder: (sortOrder: string) => void;
-  setSelectedTag: (selectedTag: string) => void;
+  searchQuery: string
+  sortBy: string
+  sortOrder: string
+  selectedTag: string
+  setSearchQuery: (searchQuery: string) => void
+  setSortBy: (sortBy: string) => void
+  setSortOrder: (sortOrder: string) => void
+  setSelectedTag: (selectedTag: string) => void
 }
 
 export const useFilterStore = create<FilterState>((set) => ({
@@ -20,4 +20,4 @@ export const useFilterStore = create<FilterState>((set) => ({
   setSortBy: (sortBy) => set({ sortBy }),
   setSortOrder: (sortOrder) => set({ sortOrder }),
   setSelectedTag: (selectedTag) => set({ selectedTag }),
-}));
+}))

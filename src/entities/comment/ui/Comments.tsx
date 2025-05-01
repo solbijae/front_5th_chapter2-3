@@ -1,17 +1,17 @@
-import { Edit2, Plus, ThumbsUp, Trash2 } from "lucide-react";
-import { Button } from "@/shared/ui";
-import { CommentDetail } from "@/entities/comment/config/comment";
+import { Edit2, Plus, ThumbsUp, Trash2 } from "lucide-react"
+import { Button } from "@/shared/ui"
+import { CommentDetail } from "@/entities/comment/config/comment"
 interface CommentsProps {
-  postId: number | undefined;
-  comments: CommentDetail[];
-  setNewComment: (comment: { body: string; postId: number | null; userId: number }) => void;
-  setShowAddCommentDialog: (show: boolean) => void;
-  setSelectedComment: (comment: CommentDetail | null) => void;
-  setShowEditCommentDialog: (show: boolean) => void;
-  deleteComment: (id: number, postId: number) => void;
-  likeComment: (id: number, postId: number) => void;
-  highlightText: (text: string, query: string) => React.ReactNode;
-  searchQuery: string;
+  postId: number | undefined
+  comments: CommentDetail[]
+  setNewComment: (comment: { body: string; postId: number | null; userId: number }) => void
+  setShowAddCommentDialog: (show: boolean) => void
+  setSelectedComment: (comment: CommentDetail | null) => void
+  setShowEditCommentDialog: (show: boolean) => void
+  deleteComment: (id: number, postId: number) => void
+  likeComment: (id: number, postId: number) => void
+  highlightText: (text: string, query: string) => React.ReactNode
+  searchQuery: string
 }
 
 export const Comments = ({
@@ -26,7 +26,7 @@ export const Comments = ({
   highlightText,
   searchQuery,
 }: CommentsProps) => {
-  if (!postId) return null;
+  if (!postId) return null
   return (
     <div className="mt-2">
       <div className="flex items-center justify-between mb-2">
@@ -34,8 +34,8 @@ export const Comments = ({
         <Button
           size="sm"
           onClick={() => {
-            setNewComment({ body: "", postId, userId: 1 });
-            setShowAddCommentDialog(true);
+            setNewComment({ body: "", postId, userId: 1 })
+            setShowAddCommentDialog(true)
           }}
         >
           <Plus className="w-3 h-3 mr-1" />
@@ -58,8 +58,8 @@ export const Comments = ({
                 variant="ghost"
                 size="sm"
                 onClick={() => {
-                  setSelectedComment(comment);
-                  setShowEditCommentDialog(true);
+                  setSelectedComment(comment)
+                  setShowEditCommentDialog(true)
                 }}
               >
                 <Edit2 className="w-3 h-3" />
@@ -72,5 +72,5 @@ export const Comments = ({
         ))}
       </div>
     </div>
-  );
-};
+  )
+}

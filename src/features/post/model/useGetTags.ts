@@ -1,6 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
-import { fetchTagsData } from "@/entities/post/api/post";
-import { STALE_TIME, GC_TIME, RETRY_COUNT } from "@/app/config/cache";
+import { useQuery } from "@tanstack/react-query"
+import { fetchTagsData } from "@/entities/post/api/post"
+import { STALE_TIME, GC_TIME, RETRY_COUNT } from "@/app/config/cache"
 
 export const useGetTagQuery = () => {
   return useQuery({
@@ -10,5 +10,5 @@ export const useGetTagQuery = () => {
     gcTime: GC_TIME,
     retry: RETRY_COUNT,
     refetchOnWindowFocus: false,
-  });
+  })
 }

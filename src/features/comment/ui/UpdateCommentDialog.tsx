@@ -1,12 +1,12 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle, Textarea, Button } from "@/shared/ui";
-import { CommentDetail } from "@/entities/comment/config/comment";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, Textarea, Button } from "@/shared/ui"
+import { CommentDetail } from "@/entities/comment/config/comment"
 
 interface UpdateCommentDialogProps {
-  showEditCommentDialog: boolean;
-  setShowEditCommentDialog: (showEditCommentDialog: boolean) => void;
-  selectedComment: CommentDetail | null;
-  setSelectedComment: (selectedComment: CommentDetail | null) => void;
-  updateComment: () => void;
+  showEditCommentDialog: boolean
+  setShowEditCommentDialog: (showEditCommentDialog: boolean) => void
+  selectedComment: CommentDetail | null
+  setSelectedComment: (selectedComment: CommentDetail | null) => void
+  updateComment: () => void
 }
 export const UpdateCommentDialog: React.FC<UpdateCommentDialogProps> = ({
   showEditCommentDialog,
@@ -25,9 +25,7 @@ export const UpdateCommentDialog: React.FC<UpdateCommentDialogProps> = ({
           <Textarea
             placeholder="댓글 내용"
             value={selectedComment?.body || ""}
-            onChange={(e) =>
-              setSelectedComment(selectedComment ? { ...selectedComment, body: e.target.value } : null)
-            }
+            onChange={(e) => setSelectedComment(selectedComment ? { ...selectedComment, body: e.target.value } : null)}
           />
           <Button onClick={updateComment}>댓글 업데이트</Button>
         </div>

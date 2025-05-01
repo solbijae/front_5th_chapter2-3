@@ -1,12 +1,12 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle, Input, Textarea, Button } from "@/shared/ui";
-import { PostCreateRequestBody } from "@/entities/post/config/post";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, Input, Textarea, Button } from "@/shared/ui"
+import { PostCreateRequestBody } from "@/entities/post/config/post"
 
 interface AddPostDialogProps {
-  showAddDialog: boolean;
-  setShowAddDialog: (showAddDialog: boolean) => void;
-  newPost: PostCreateRequestBody;
-  setNewPost: (newPost: PostCreateRequestBody) => void;
-  addPost: () => void;
+  showAddDialog: boolean
+  setShowAddDialog: (showAddDialog: boolean) => void
+  newPost: PostCreateRequestBody
+  setNewPost: (newPost: PostCreateRequestBody) => void
+  addPost: () => void
 }
 
 export const AddPostDialog: React.FC<AddPostDialogProps> = ({

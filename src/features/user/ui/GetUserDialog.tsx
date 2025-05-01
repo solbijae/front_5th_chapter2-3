@@ -1,12 +1,16 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui";
-import { UserDetail } from "@/entities/user/config/user";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui"
+import { UserDetail } from "@/entities/user/config/user"
 
 interface GetUserDialogProps {
-  showUserModal: boolean;
-  setShowUserModal: (showUserModal: boolean) => void;
-  selectedUser: UserDetail | null;
+  showUserModal: boolean
+  setShowUserModal: (showUserModal: boolean) => void
+  selectedUser: UserDetail | null
 }
-export const GetUserDialog: React.FC<GetUserDialogProps> = ({ showUserModal, setShowUserModal, selectedUser }: GetUserDialogProps) => {
+export const GetUserDialog: React.FC<GetUserDialogProps> = ({
+  showUserModal,
+  setShowUserModal,
+  selectedUser,
+}: GetUserDialogProps) => {
   return (
     <Dialog open={showUserModal} onOpenChange={setShowUserModal}>
       <DialogContent>

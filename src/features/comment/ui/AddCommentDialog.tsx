@@ -1,12 +1,12 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle, Textarea, Button } from "@/shared/ui";
-import { PostCreateCommentRequestBody } from "@/entities/comment/config/comment";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, Textarea, Button } from "@/shared/ui"
+import { PostCreateCommentRequestBody } from "@/entities/comment/config/comment"
 
 interface AddCommentDialogProps {
-  showAddCommentDialog: boolean;
-  setShowAddCommentDialog: (showAddCommentDialog: boolean) => void;
-  newComment: PostCreateCommentRequestBody;
-  setNewComment: (newComment: PostCreateCommentRequestBody) => void;
-  addComment: () => void;
+  showAddCommentDialog: boolean
+  setShowAddCommentDialog: (showAddCommentDialog: boolean) => void
+  newComment: PostCreateCommentRequestBody
+  setNewComment: (newComment: PostCreateCommentRequestBody) => void
+  addComment: () => void
 }
 export const AddCommentDialog: React.FC<AddCommentDialogProps> = ({
   showAddCommentDialog,

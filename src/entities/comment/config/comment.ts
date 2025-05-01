@@ -1,22 +1,22 @@
 export interface CommentUser {
-  id: number;
-  username: string;
-  fullName: string;
+  id: number
+  username: string
+  fullName: string
 }
 
 export type CommentDetail = {
-  id: number;
-  body: string;
-  postId: number;
-  likes: number;
-  user: CommentUser;
+  id: number
+  body: string
+  postId: number
+  likes: number
+  user: CommentUser
 }
 
 export type GetComment = {
-  comments: CommentDetail[];
-  total: number;
-  skip: number;
-  limit: number;
+  comments: CommentDetail[]
+  total: number
+  skip: number
+  limit: number
 }
 
 export type PostCreateCommentRequestBody = Pick<CommentDetail, "body" | "postId"> & { userId: number }

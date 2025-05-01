@@ -1,9 +1,9 @@
-import { CardHeader, CardTitle } from "@/shared/ui";
-import { Button } from "@/shared/ui";
-import { Plus } from "lucide-react";
+import { CardHeader, CardTitle } from "@/shared/ui"
+import { Button } from "@/shared/ui"
+import { Plus } from "lucide-react"
 
 interface PostsCardTitleProps {
-  setShowAddDialog: (showAddDialog: boolean) => void;
+  setShowAddDialog: (showAddDialog: boolean) => void
 }
 
 export const PostsCardTitle: React.FC<PostsCardTitleProps> = ({ setShowAddDialog }) => {

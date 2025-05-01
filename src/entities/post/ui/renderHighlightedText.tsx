@@ -5,9 +5,9 @@ export const renderHighlightedText = (parts: string[], highlight: string) => {
     return <span>{parts}</span>
   }
 
-  const regex = new RegExp(`(${highlight})`, "gi");
+  const regex = new RegExp(`(${highlight})`, "gi")
 
   return parts.map((part, index) =>
-    regex.test(part) ? <mark key={index}>{part}</mark> : <span key={index}>{part}</span>
-  );
-};
+    regex.test(part) ? <mark key={index}>{part}</mark> : <span key={index}>{part}</span>,
+  )
+}

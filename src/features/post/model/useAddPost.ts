@@ -1,26 +1,26 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { fetchAddPostData } from "@/entities/post/api/post";
-import { handleError } from "@/shared/lib/queryError";
-import { invalidateQueries } from "@/shared/lib/queryInvalidate";
-import { PostCreateRequestBody, Post } from "@/entities/post/config/post";
+import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { fetchAddPostData } from "@/entities/post/api/post"
+import { handleError } from "@/shared/lib/queryError"
+import { invalidateQueries } from "@/shared/lib/queryInvalidate"
+import { PostCreateRequestBody, Post } from "@/entities/post/config/post"
 
 export const useAddPost = (
   newPost: PostCreateRequestBody,
   setPosts: (posts: Post[]) => void,
   posts: Post[],
   setShowAddDialog: (show: boolean) => void,
-  setNewPost: (post: PostCreateRequestBody) => void
+  setNewPost: (post: PostCreateRequestBody) => void,
 ) => {
-  const queryClient = useQueryClient();
+  const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: () => fetchAddPostData(newPost),
     onSuccess: (data) => {
-      setPosts([data, ...posts]);
-      setShowAddDialog(false);
-      setNewPost({ title: "", body: "", userId: 1 });
-      invalidateQueries(queryClient, ['posts']);
+      setPosts([data, ...posts])
+      setShowAddDialog(false)
+      setNewPost({ title: "", body: "", userId: 1 })
+      invalidateQueries(queryClient, ["posts"])
     },
-    onError: handleError
-  });
+    onError: handleError,
+  })
 }
